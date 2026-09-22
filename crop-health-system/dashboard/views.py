@@ -3,6 +3,7 @@ import datetime as dt
 from django.utils import timezone as dj_timezone
 
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -57,6 +58,24 @@ def officer_dashboard(request):
     all_crops = DiseaseReport.objects.exclude(crop_detected="").values_list("crop_detected", flat=True).distinct().order_by("crop_detected")
     all_diseases = DiseaseReport.objects.exclude(disease_detected="").values_list("disease_detected", flat=True).distinct().order_by("disease_detected")
 
+    # Farmer directory
+    farmer_qs = (
+        User.objects.filter(profile__role="farmer")
+        .select_related("profile")
+        .prefetch_related("farms", "disease_reports")
+        .order_by("last_name", "first_name")
+    )
+    farmer_directory = []
+    for f in farmer_qs:
+        farm = f.farms.first()
+        latest = f.disease_reports.order_by("-created_at").first()
+        farmer_directory.append({
+            "user": f,
+            "farm": farm,
+            "latest_report": latest,
+            "report_count": f.disease_reports.count(),
+        })
+
     context = {
         "stats": stats,
         "disease_distribution": disease_distribution,
@@ -66,6 +85,7 @@ def officer_dashboard(request):
         "all_districts": [d for d in all_districts if d],
         "all_crops": [c for c in all_crops if c],
         "all_diseases": [d for d in all_diseases if d],
+        "farmer_directory": farmer_directory,
     }
     return render(request, "dashboard/index.html", context)
 
@@ -89,6 +109,7 @@ def hotspot_geojson(request):
                 "risk_band": r.risk_band,
                 "district": r.farm.district,
                 "farm": r.farm.name,
+                "farmer": r.farmer.get_full_name() or r.farmer.username,
                 "created_at": r.created_at.strftime("%Y-%m-%d"),
             },
         }

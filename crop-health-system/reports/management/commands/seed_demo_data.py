@@ -29,16 +29,40 @@ from reports.models import DiseaseReport, PestReport
 from reports.services import process_disease_report
 
 DISTRICTS = [
-    # (district, approx center lat, approx center lng)
-    ("Jalgaon", 21.0077, 75.5626),
-    ("Nashik", 19.9975, 73.7898),
-    ("Pune", 18.5204, 73.8567),
-    ("Dhule", 20.9042, 74.7749),
-    ("Ahmednagar", 19.0952, 74.7496),
+    # (district, taluka, approx center lat, approx center lng)
+    ("Jalgaon",    "Jalgaon",    21.0077, 75.5626),
+    ("Nashik",     "Niphad",     19.9975, 73.7898),
+    ("Pune",       "Haveli",     18.5204, 73.8567),
+    ("Dhule",      "Shirpur",    20.9042, 74.7749),
+    ("Ahmednagar", "Rahuri",     19.0952, 74.7496),
+    ("Solapur",    "Pandharpur", 17.6805, 75.3214),
+    ("Kolhapur",   "Hatkanangle",16.6949, 74.2310),
+    ("Aurangabad", "Gangapur",   19.8762, 75.3433),
 ]
 
-CROPS = ["Tomato", "Potato", "Corn Maize", "Grape", "Squash", "Apple"]
-VARIETIES = ["Local", "Hybrid-1", "Hybrid-2", "Improved"]
+CROPS = ["Tomato", "Potato", "Corn Maize", "Grape", "Sugarcane", "Cotton", "Onion", "Soybean"]
+VARIETIES = ["Local", "Hybrid-1", "Hybrid-2", "Improved", "Desi"]
+
+# Realistic Maharashtra farmer profiles
+FARMER_PROFILES = [
+    {"first_name": "Ramesh",    "last_name": "Patil",      "phone": "9823041567", "village": "Wakad"},
+    {"first_name": "Suresh",    "last_name": "Jadhav",     "phone": "9765234801", "village": "Pimpri"},
+    {"first_name": "Santosh",   "last_name": "Shinde",     "phone": "9876543210", "village": "Chinchwad"},
+    {"first_name": "Vijay",     "last_name": "More",       "phone": "9112345678", "village": "Alandi"},
+    {"first_name": "Prakash",   "last_name": "Deshmukh",   "phone": "9988776655", "village": "Dehu"},
+    {"first_name": "Raju",      "last_name": "Bhosale",    "phone": "8800991234", "village": "Talegaon"},
+    {"first_name": "Ganesh",    "last_name": "Waghmare",   "phone": "9321456789", "village": "Indapur"},
+    {"first_name": "Dinesh",    "last_name": "Pawar",      "phone": "9870001122", "village": "Baramati"},
+    {"first_name": "Mahesh",    "last_name": "Kulkarni",   "phone": "9654321098", "village": "Shirur"},
+    {"first_name": "Anil",      "last_name": "Gaikwad",    "phone": "9512345670", "village": "Junnar"},
+    {"first_name": "Balaji",    "last_name": "Kale",       "phone": "9445678901", "village": "Manchar"},
+    {"first_name": "Sanjay",    "last_name": "Nimbalkar",  "phone": "9334512678", "village": "Phaltan"},
+    {"first_name": "Vikas",     "last_name": "Salunkhe",   "phone": "9224567890", "village": "Wai"},
+    {"first_name": "Rajendra",  "last_name": "Thorat",     "phone": "9112233445", "village": "Satara"},
+    {"first_name": "Dattatray", "last_name": "Mane",       "phone": "9001122334", "village": "Karad"},
+]
+
+SOIL_TYPES = ["Black (Vertisol)", "Red laterite", "Loamy alluvial", "Sandy loam", "Medium black"]
 
 
 def _synthetic_leaf_image(archetype: str, seed: int) -> ContentFile:
@@ -85,23 +109,45 @@ class Command(BaseCommand):
 
         farms = []
         for i in range(15):
-            district, lat0, lng0 = DISTRICTS[i % len(DISTRICTS)]
+            district, taluka, lat0, lng0 = DISTRICTS[i % len(DISTRICTS)]
+            fp = FARMER_PROFILES[i]
             username = f"farmer{i+1}"
-            farmer, _ = User.objects.get_or_create(username=username, defaults={"first_name": f"Farmer {i+1}"})
+            farmer, _ = User.objects.get_or_create(
+                username=username,
+                defaults={
+                    "first_name": fp["first_name"],
+                    "last_name": fp["last_name"],
+                    "email": f"{username}@krishi.mh.gov.in",
+                },
+            )
+            farmer.first_name = fp["first_name"]
+            farmer.last_name = fp["last_name"]
             farmer.set_password("demo1234")
             farmer.save()
             Profile.objects.update_or_create(
-                user=farmer, defaults={"role": Profile.Role.FARMER, "district": district, "preferred_language": "en"}
+                user=farmer,
+                defaults={
+                    "role": Profile.Role.FARMER,
+                    "district": district,
+                    "taluka": taluka,
+                    "phone": fp["phone"],
+                    "preferred_language": random.choice(["en", "mr", "hi"]),
+                },
             )
 
+            lat = lat0 + rng.normal(0, 0.18)
+            lng = lng0 + rng.normal(0, 0.18)
+            farm_name = f"{fp['last_name']} {fp['village']} Farm"
             farm, _ = Farm.objects.get_or_create(
-                owner=farmer, name=f"{district} Farm {i+1}",
+                owner=farmer, name=farm_name,
                 defaults={
-                    "latitude": lat0 + rng.normal(0, 0.15),
-                    "longitude": lng0 + rng.normal(0, 0.15),
-                    "area_acres": round(random.uniform(1, 8), 1),
+                    "latitude": lat,
+                    "longitude": lng,
+                    "area_acres": round(random.uniform(1.5, 12.0), 1),
                     "district": district,
-                    "soil_type": random.choice(["Black soil", "Red soil", "Loamy", "Sandy loam"]),
+                    "taluka": taluka,
+                    "village": fp["village"],
+                    "soil_type": random.choice(SOIL_TYPES),
                 },
             )
             farms.append(farm)
@@ -111,15 +157,17 @@ class Command(BaseCommand):
                 farm=farm, crop=crop,
                 defaults={
                     "variety": random.choice(VARIETIES),
-                    "sowing_date": dt.date.today() - dt.timedelta(days=random.randint(10, 100)),
+                    "sowing_date": dt.date.today() - dt.timedelta(days=random.randint(10, 120)),
                     "growth_stage": random.choice(CropCycle.GrowthStage.values),
                 },
             )
 
+            # Realistic pest variation — not all farms have same pest
+            pest = random.choice(["Fall armyworm", "Aphids", "Whitefly", "Bollworm", "Thrips"])
             PestReport.objects.get_or_create(
-                farmer=farmer, farm=farm, pest_name="Fall armyworm",
+                farmer=farmer, farm=farm, pest_name=pest,
                 defaults={
-                    "trap_count": random.randint(0, 25),
+                    "trap_count": random.randint(0, 40),
                     "latitude": farm.latitude, "longitude": farm.longitude,
                 },
             )
