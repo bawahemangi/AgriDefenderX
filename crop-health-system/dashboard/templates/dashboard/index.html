@@ -4,7 +4,13 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>#hotspot-map{ height:420px; border-radius:12px; }</style>
+<style>
+  #hotspot-map{ height:450px; border-radius:12px; z-index: 10; }
+  .tab-btn { padding: 0.5rem 1rem; border-bottom: 2px solid transparent; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .tab-btn.active { border-bottom-color: var(--forest); color: var(--forest); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
 {% endblock %}
 {% block content %}
 <div class="space-y-6">
@@ -45,56 +51,111 @@
     <div class="card p-4"><p class="text-3xl font-serif font-semibold">{{ stats.farmers_reached }}</p><p class="text-xs text-[var(--ink-soft)] mt-1">Farmers reached</p></div>
   </div>
 
-  <div class="grid lg:grid-cols-3 gap-4">
-    <div class="card p-4 lg:col-span-2">
-      <h2 class="font-serif font-semibold mb-2">Disease hotspot map</h2>
-      <div id="hotspot-map"></div>
+  <!-- Tabs Navigation -->
+  <div class="flex gap-4 border-b border-[var(--line)]">
+    <button class="tab-btn active" onclick="switchTab('overview')">Overview & Map</button>
+    <button class="tab-btn" onclick="switchTab('farmers')">Farmer Directory</button>
+    <button class="tab-btn" onclick="switchTab('reports')">Recent Reports</button>
+  </div>
+
+  <!-- Overview Tab -->
+  <div id="tab-overview" class="tab-content active space-y-4">
+    <div class="grid lg:grid-cols-3 gap-4">
+      <div class="card p-4 lg:col-span-2">
+        <h2 class="font-serif font-semibold mb-2">Disease hotspot map</h2>
+        <div id="hotspot-map"></div>
+      </div>
+      <div class="card p-4">
+        <h2 class="font-serif font-semibold mb-2">Disease distribution</h2>
+        <canvas id="diseaseChart" height="220"></canvas>
+      </div>
     </div>
-    <div class="card p-4">
-      <h2 class="font-serif font-semibold mb-2">Disease distribution</h2>
-      <canvas id="diseaseChart" height="220"></canvas>
+
+    <div class="grid lg:grid-cols-2 gap-4">
+      <div class="card p-4">
+        <h2 class="font-serif font-semibold mb-2">Reports by district</h2>
+        <canvas id="districtChart" height="180"></canvas>
+      </div>
+      <div class="card p-4">
+        <h2 class="font-serif font-semibold mb-2">Legend</h2>
+        <ul class="text-sm space-y-2 mt-2">
+          <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:var(--risk-high)"></span> High risk report</li>
+          <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:var(--risk-med)"></span> Medium risk report</li>
+          <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:var(--risk-low)"></span> Low risk report</li>
+          <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full inline-block border-2" style="border-color:var(--forest)"></span> Cluster of 2+ confirmed cases (hotspot)</li>
+        </ul>
+      </div>
     </div>
   </div>
 
-  <div class="grid lg:grid-cols-2 gap-4">
-    <div class="card p-4">
-      <h2 class="font-serif font-semibold mb-2">Reports by district</h2>
-      <canvas id="districtChart" height="180"></canvas>
-    </div>
-    <div class="card p-4">
-      <h2 class="font-serif font-semibold mb-2">Legend</h2>
-      <ul class="text-sm space-y-2 mt-2">
-        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:var(--risk-high)"></span> High risk report</li>
-        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:var(--risk-med)"></span> Medium risk report</li>
-        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full inline-block" style="background:var(--risk-low)"></span> Low risk report</li>
-        <li class="flex items-center gap-2"><span class="w-4 h-4 rounded-full inline-block border-2" style="border-color:var(--forest)"></span> Cluster of 2+ confirmed cases (hotspot)</li>
-      </ul>
+  <!-- Farmers Tab -->
+  <div id="tab-farmers" class="tab-content space-y-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for f in farmer_directory %}
+      <div class="card p-4 flex flex-col h-full">
+        <div class="flex justify-between items-start mb-2">
+          <div>
+            <h3 class="font-bold text-lg text-[var(--forest)]">{{ f.user.first_name }} {{ f.user.last_name }}</h3>
+            <p class="text-sm text-[var(--ink-soft)]">📞 {{ f.user.profile.phone }}</p>
+          </div>
+          <span class="badge bg-[var(--line)] text-xs">{{ f.user.profile.district }}</span>
+        </div>
+        
+        <div class="mt-2 pt-2 border-t border-[var(--line)] flex-grow">
+          <p class="text-xs font-semibold mb-1">Farm Details</p>
+          {% if f.farm %}
+            <p class="text-sm">{{ f.farm.name }}</p>
+            <p class="text-xs text-[var(--ink-soft)]">{{ f.farm.area_acres }} acres · {{ f.farm.soil_type }}</p>
+          {% else %}
+            <p class="text-sm text-[var(--ink-soft)]">No farm registered</p>
+          {% endif %}
+        </div>
+        
+        <div class="mt-3 pt-3 border-t border-[var(--line)]">
+          <p class="text-xs font-semibold mb-1">Status ({{ f.report_count }} reports)</p>
+          {% if f.latest_report %}
+            <div class="flex items-center justify-between text-sm">
+              <span class="truncate pr-2">{{ f.latest_report.disease_detected|default:"Healthy" }}</span>
+              {% if f.latest_report.risk_band %}
+                <span class="badge risk-{{ f.latest_report.risk_band }}">{{ f.latest_report.risk_band }}</span>
+              {% endif %}
+            </div>
+            <p class="text-[0.65rem] text-[var(--ink-soft)] mt-1">Last report: {{ f.latest_report.created_at|date:"d M Y" }}</p>
+          {% else %}
+            <p class="text-sm text-[var(--ink-soft)]">No reports submitted</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
     </div>
   </div>
 
-  <div class="card overflow-x-auto">
-    <h2 class="font-serif font-semibold p-4 pb-0">Recent reports</h2>
-    <table class="w-full text-sm mt-2">
-      <thead>
-        <tr class="text-left text-xs uppercase text-[var(--ink-soft)] border-b border-[var(--line)]">
-          <th class="p-3">Farmer</th><th>District</th><th>Crop</th><th>Disease</th><th>Confidence</th><th>Risk</th><th>Status</th><th>Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in reports %}
-        <tr class="border-b border-[var(--line)] last:border-0">
-          <td class="p-3">{{ r.farmer.username }}</td>
-          <td>{{ r.farm.district }}</td>
-          <td>{{ r.crop_detected }}</td>
-          <td>{{ r.disease_detected }}</td>
-          <td>{% widthratio r.confidence 1 100 %}%</td>
-          <td><span class="badge risk-{{ r.risk_band }}">{{ r.risk_band }}</span></td>
-          <td class="text-xs">{{ r.get_status_display }}</td>
-          <td class="text-xs">{{ r.created_at|date:"d M" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- Reports Tab -->
+  <div id="tab-reports" class="tab-content">
+    <div class="card overflow-x-auto">
+      <h2 class="font-serif font-semibold p-4 pb-0">Recent reports</h2>
+      <table class="w-full text-sm mt-2">
+        <thead>
+          <tr class="text-left text-xs uppercase text-[var(--ink-soft)] border-b border-[var(--line)]">
+            <th class="p-3">Farmer</th><th>District</th><th>Crop</th><th>Disease</th><th>Confidence</th><th>Risk</th><th>Status</th><th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reports %}
+          <tr class="border-b border-[var(--line)] last:border-0 hover:bg-[var(--bg)]">
+            <td class="p-3 font-medium">{{ r.farmer.get_full_name|default:r.farmer.username }}</td>
+            <td>{{ r.farm.district }}</td>
+            <td>{{ r.crop_detected }}</td>
+            <td>{{ r.disease_detected }}</td>
+            <td>{% widthratio r.confidence 1 100 %}%</td>
+            <td><span class="badge risk-{{ r.risk_band }}">{{ r.risk_band }}</span></td>
+            <td class="text-xs">{{ r.get_status_display }}</td>
+            <td class="text-xs whitespace-nowrap">{{ r.created_at|date:"d M H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -104,6 +165,22 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors', maxZoom: 18,
 }).addTo(map);
 
+// Fix leaflet rendering when initialized in a hidden or complex layout
+setTimeout(() => { map.invalidateSize(); }, 500);
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  
+  document.getElementById('tab-' + tabId).classList.add('active');
+  event.currentTarget.classList.add('active');
+  
+  // Critical fix for leaflet map when switching tabs
+  if (tabId === 'overview') {
+    setTimeout(() => { map.invalidateSize(); }, 100);
+  }
+}
+
 const riskColors = { HIGH: '#C1440E', MEDIUM: '#C98A1D', LOW: '#3F7D58' };
 
 fetch("{% url 'dashboard:hotspot_geojson' %}?days={{ filters.days }}")
@@ -112,10 +189,11 @@ fetch("{% url 'dashboard:hotspot_geojson' %}?days={{ filters.days }}")
     data.features.forEach(f => {
       const [lng, lat] = f.geometry.coordinates;
       const p = f.properties;
+      const farmerName = p.farmer || "Unknown Farmer";
       L.circleMarker([lat, lng], {
         radius: 6, color: riskColors[p.risk_band] || '#666',
         fillColor: riskColors[p.risk_band] || '#666', fillOpacity: 0.75, weight: 1,
-      }).bindPopup(`<strong>${p.disease}</strong><br>${p.crop} · ${p.district}<br>Risk: ${p.risk_band}<br>${p.created_at}`)
+      }).bindPopup(`<strong>${p.disease}</strong><br>${p.crop} · ${p.district}<br>👨‍🌾 ${farmerName}<br>Risk: ${p.risk_band}<br>${p.created_at}`)
         .addTo(map);
     });
     (data.hotspot_clusters || []).forEach(c => {
