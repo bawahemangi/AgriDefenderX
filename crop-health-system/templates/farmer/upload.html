@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Scan Crop{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <h1 class="font-serif text-2xl font-semibold mb-1">Scan your crop</h1>
+  <p class="text-sm text-[var(--ink-soft)] mb-6">Upload a clear, close-up photo of the affected leaf or plant part. We'll identify the issue, check local weather and pest risk, and give you an action plan.</p>
+
+  {% if not farms %}
+    <div class="card p-5 text-sm">
+      You don't have a farm registered yet. Add one from the
+      <a href="/admin/farms/farm/add/" class="underline font-medium">admin panel</a> to get started
+      (a farmer-facing "Add Farm" form is a natural next build — this MVP registers farms via admin/seed data).
+    </div>
+  {% else %}
+  <form method="post" enctype="multipart/form-data" class="card p-5 space-y-4">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Photo</label>
+      <input type="file" name="image" accept="image/*" capture="environment" required
+             class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Farm</label>
+      <select name="farm" id="farm-select" required
+              class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+        {% for farm in farms %}
+          <option value="{{ farm.id }}">{{ farm.name }} — {{ farm.district }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm font-semibold mb-1">Crop / cycle (optional but improves accuracy)</label>
+      <select name="crop_cycle" id="crop-cycle-select"
+              class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+        <option value="">— Not specified —</option>
+      </select>
+    </div>
+
+    <input type="hidden" name="latitude" id="latitude">
+    <input type="hidden" name="longitude" id="longitude">
+    <p class="text-xs text-[var(--ink-soft)]">📍 If you allow location access, we'll tag this report precisely for the hotspot map. Otherwise we use your farm's registered location.</p>
+
+    <button type="submit" class="btn-primary w-full py-2.5 rounded-lg font-semibold">Analyze photo</button>
+  </form>
+  {% endif %}
+</div>
+
+<script>
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    document.getElementById('latitude').value = pos.coords.latitude;
+    document.getElementById('longitude').value = pos.coords.longitude;
+  }, function() {}, { timeout: 4000 });
+}
+
+const farmSelect = document.getElementById('farm-select');
+const cycleSelect = document.getElementById('crop-cycle-select');
+
+function loadCropCycles() {
+  if (!farmSelect || !farmSelect.value) return;
+  fetch(`/farmer/farms/${farmSelect.value}/crop-cycles/`)
+    .then(r => r.json())
+    .then(data => {
+      cycleSelect.innerHTML = '<option value="">— Not specified —</option>';
+      (data.crop_cycles || []).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = `${c.crop}${c.variety ? ' (' + c.variety + ')' : ''} — ${c.growth_stage}`;
+        cycleSelect.appendChild(opt);
+      });
+    });
+}
+if (farmSelect) {
+  farmSelect.addEventListener('change', loadCropCycles);
+  loadCropCycles();
+}
+</script>
+{% endblock %}

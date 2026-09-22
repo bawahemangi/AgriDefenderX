@@ -1,0 +1,25 @@
+# Optional: SQLite is the default (see config/settings.py) and needs no
+# setup at all. Use this only once you want to move to PostgreSQL --
+# start it, then set the matching POSTGRES_* env vars before running
+# manage.py so Django picks it up:
+#
+#   docker compose up -d
+#   export POSTGRES_DB=crop_health POSTGRES_USER=crop_health POSTGRES_PASSWORD=crop_health POSTGRES_HOST=localhost
+#   python manage.py migrate
+#   python manage.py seed_demo_data
+#
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crop_health
+      POSTGRES_USER: crop_health
+      POSTGRES_PASSWORD: crop_health
+    ports:
+      - "5432:5432"
+    volumes:
+      - crop_health_pgdata:/var/lib/postgresql/data
+
+volumes:
+  crop_health_pgdata:

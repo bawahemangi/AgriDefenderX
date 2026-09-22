@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}My Reports{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="font-serif text-2xl font-semibold">My reports</h1>
+    <a href="{% url 'reports:upload_report' %}" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold">+ Scan crop</a>
+  </div>
+
+  {% if not reports %}
+    <div class="card p-6 text-center text-sm text-[var(--ink-soft)]">No reports yet. Scan a crop photo to get started.</div>
+  {% else %}
+  <div class="space-y-3">
+    {% for r in reports %}
+    <a href="{% url 'reports:report_detail' r.id %}" class="card p-4 flex items-center gap-4 hover:shadow-sm transition">
+      {% if r.image %}<img src="{{ r.image.url }}" class="w-16 h-16 rounded-lg object-cover">{% endif %}
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold truncate">{{ r.disease_detected|default:"Processing…" }}</p>
+        <p class="text-xs text-[var(--ink-soft)]">{{ r.farm.name }} · {{ r.created_at|date:"d M Y" }}</p>
+      </div>
+      {% if r.risk_band %}<span class="badge risk-{{ r.risk_band }}">{{ r.risk_band }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

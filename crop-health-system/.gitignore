@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Django
+db.sqlite3
+/staticfiles/
+.env
+
+# ML artifacts (regenerate via the train_*.py scripts; demo pickles are
+# intentionally committed so the app runs out of the box)
+ml/disease_classifier/checkpoints/
+ml/disease_classifier/data/
+
+# OS
+.DS_Store

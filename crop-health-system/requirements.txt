@@ -1,0 +1,25 @@
+# --- Backend ---
+Django>=5.0,<6.0
+djangorestframework>=3.15
+Pillow>=10.0
+requests>=2.31
+
+# --- ML: risk model (structured data) ---
+xgboost>=2.0
+scikit-learn>=1.4
+pandas>=2.0
+numpy>=1.26
+
+# --- ML: image classifier ---
+# torch/torchvision are only required if you're training or serving the
+# real CNN (ml/disease_classifier/model.py, train.py). The app runs fine
+# without them using the demo heuristic fallback (infer.py). Install with:
+#   pip install torch torchvision
+# (left commented out here since they're large and platform/GPU-specific --
+# follow https://pytorch.org/get-started/locally/ for the right command
+# for your machine.)
+# torch
+# torchvision
+
+# --- Production database (optional, SQLite is the default) ---
+psycopg2-binary>=2.9  # only needed if you set POSTGRES_DB env vars

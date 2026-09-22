@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Crop Health System{% endblock %} — Maharashtra Krishi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root{
+    --ink:#1E2A22; --ink-soft:#4B5A50;
+    --bg:#F3F4EF; --bg-panel:#FFFFFF;
+    --line:#DCE0D6;
+    --forest:#2F4A3C; --forest-dark:#1F332A;
+    --clay:#8B5E3C; --clay-light:#EFE2D3;
+    --risk-high:#C1440E; --risk-high-bg:#FBE9E1;
+    --risk-med:#C98A1D; --risk-med-bg:#FBF1DD;
+    --risk-low:#3F7D58; --risk-low-bg:#E7F1EB;
+  }
+  body{ background:var(--bg); color:var(--ink); font-family:'Public Sans',system-ui,sans-serif; }
+  .font-serif{ font-family:'Source Serif 4',Georgia,serif; }
+  .brand-nav{ background:var(--forest); }
+  .btn-primary{ background:var(--forest); color:#fff; }
+  .btn-primary:hover{ background:var(--forest-dark); }
+  .btn-clay{ background:var(--clay); color:#fff; }
+  .card{ background:var(--bg-panel); border:1px solid var(--line); border-radius:14px; }
+  .risk-HIGH{ color:var(--risk-high); background:var(--risk-high-bg); }
+  .risk-MEDIUM{ color:var(--risk-med); background:var(--risk-med-bg); }
+  .risk-LOW{ color:var(--risk-low); background:var(--risk-low-bg); }
+  .badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-weight:700; font-size:0.72rem; letter-spacing:0.03em; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen flex flex-col">
+  <nav class="brand-nav text-white">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 font-serif text-lg font-semibold">
+        🌾 Crop Health System <span class="hidden sm:inline text-xs font-sans font-normal opacity-70 ml-1">| Govt. of Maharashtra — MSInS</span>
+      </a>
+      <div class="flex items-center gap-4 text-sm">
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'reports:upload_report' %}" class="opacity-90 hover:opacity-100">Scan Crop</a>
+          <a href="{% url 'reports:report_list' %}" class="opacity-90 hover:opacity-100">My Reports</a>
+          {% if request.user.is_staff %}
+            <a href="{% url 'dashboard:index' %}" class="opacity-90 hover:opacity-100">Officer Dashboard</a>
+            <a href="/admin/" class="opacity-90 hover:opacity-100">Admin / Expert Review</a>
+          {% endif %}
+          <span class="opacity-70">{{ request.user.username }}</span>
+        {% else %}
+          <a href="/admin/login/?next={{ request.path }}" class="btn-primary px-3 py-1.5 rounded-lg">Log in</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-6">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="card px-4 py-2 mb-4 text-sm">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="text-center text-xs text-[var(--ink-soft)] py-6">
+    Problem Statement 26131 — Early detection &amp; management of crop diseases and pest infestations · Government of Maharashtra
+  </footer>
+</body>
+</html>
