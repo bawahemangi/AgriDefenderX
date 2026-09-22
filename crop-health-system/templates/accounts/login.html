@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Login - AgriDefenderX{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto mt-10">
+  <div class="card p-6">
+    <h1 class="font-serif text-2xl font-bold mb-1 text-center">Welcome Back</h1>
+    <p class="text-[var(--ink-soft)] text-sm text-center mb-6">Log in to monitor your farm</p>
+
+    {% if error %}
+    <div class="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'accounts:login' %}" class="space-y-4">
+      {% csrf_token %}
+      
+      <div>
+        <label class="block text-sm font-semibold mb-1">Username</label>
+        <input type="text" name="username" class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white" required>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">Password</label>
+        <input type="password" name="password" class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white" required>
+      </div>
+
+      <button type="submit" class="btn-primary w-full py-2.5 rounded-lg font-semibold mt-2">Log In</button>
+    </form>
+    
+    <div class="mt-6 text-center text-sm text-[var(--ink-soft)]">
+      Don't have an account? <a href="{% url 'accounts:register' %}" class="text-[var(--forest)] font-medium hover:underline">Register now</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -67,5 +67,85 @@
     {% endif %}
   </div>
 
+  <!-- AI Workflow Visualization -->
+  <div class="card p-5 mt-6 border-l-4" style="border-left-color: var(--forest);">
+    <h2 class="font-serif text-lg font-semibold mb-4 text-[var(--forest)]">AI Diagnostic Pipeline</h2>
+    
+    <div class="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-300 before:to-transparent">
+      
+      <!-- Step 1: Image AI -->
+      <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+        <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-[var(--forest)] text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+        </div>
+        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-bold text-[var(--forest)] text-sm">Image Analysis</h3>
+            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium tracking-wide">CNN MODEL</span>
+          </div>
+          <p class="text-xs text-[var(--ink-soft)] mb-2">Detected <strong class="text-[var(--ink)]">{{ report.crop_detected }}</strong> leaf showing signs of <strong class="text-[var(--ink)]">{{ report.disease_detected|default:"healthy" }}</strong>.</p>
+          {% if report.confidence != None %}
+          <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+            <div class="bg-[var(--forest)] h-1.5 rounded-full" style="width: {% widthratio report.confidence 1 100 %}%"></div>
+          </div>
+          <p class="text-[10px] text-slate-500 text-right mt-1">{% widthratio report.confidence 1 100 %}% Confidence</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Step 2: Context Fusion -->
+      <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+        <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-amber-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+        </div>
+        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-bold text-amber-700 text-sm">Context Fusion</h3>
+            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium tracking-wide">XGBOOST</span>
+          </div>
+          <p class="text-xs text-[var(--ink-soft)] mb-2">Combined visual diagnosis with live weather, nearby pest traps, and crop growth stage to predict outbreak probability.</p>
+          <div class="flex flex-wrap gap-1 mt-2">
+            <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">Weather</span>
+            <span class="text-[10px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded border border-rose-100">Pests</span>
+            <span class="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100">Crop Stage</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Risk & Alert -->
+      <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+        <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white {% if report.risk_band == 'HIGH' %}bg-[var(--risk-high)]{% elif report.risk_band == 'MEDIUM' %}bg-[var(--risk-med)]{% else %}bg-[var(--risk-low)]{% endif %} text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="font-bold text-sm {% if report.risk_band == 'HIGH' %}text-[var(--risk-high)]{% elif report.risk_band == 'MEDIUM' %}text-[var(--risk-med)]{% else %}text-[var(--risk-low)]{% endif %}">Risk Level: {{ report.risk_band }}</h3>
+          </div>
+          <p class="text-xs text-[var(--ink-soft)]">
+            {% if report.risk_band == 'HIGH' %}High likelihood of rapid spread due to favorable environmental conditions. Immediate action required.{% elif report.risk_band == 'MEDIUM' %}Moderate risk. Monitor closely and apply preventative measures.{% else %}Low risk. Standard maintenance recommended.{% endif %}
+          </p>
+        </div>
+      </div>
+      
+      <!-- Step 4: Resolution -->
+      <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+        <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-slate-800 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-slate-200 bg-slate-50 shadow-sm">
+          <h3 class="font-bold text-slate-800 text-sm mb-1">Management Advice & Action</h3>
+          <p class="text-xs text-[var(--ink-soft)]">
+            {% if report.status == "flagged" %}
+              Routed to Agriculture Officer for <strong class="text-[var(--ink)]">Expert Review</strong>. The officer will confirm or correct this diagnosis, and the feedback will be stored to improve future AI models.
+            {% else %}
+              Advisory sent directly for <strong class="text-[var(--ink)]">Self-action</strong>.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 {% endblock %}

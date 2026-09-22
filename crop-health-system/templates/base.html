@@ -40,15 +40,17 @@
       </a>
       <div class="flex items-center gap-4 text-sm">
         {% if request.user.is_authenticated %}
+          <a href="{% url 'accounts:farmer_home' %}" class="opacity-90 hover:opacity-100 font-medium">Home</a>
           <a href="{% url 'reports:upload_report' %}" class="opacity-90 hover:opacity-100">Scan Crop</a>
-          <a href="{% url 'reports:report_list' %}" class="opacity-90 hover:opacity-100">My Reports</a>
           {% if request.user.is_staff %}
             <a href="{% url 'dashboard:index' %}" class="opacity-90 hover:opacity-100">Officer Dashboard</a>
-            <a href="/admin/" class="opacity-90 hover:opacity-100">Admin / Expert Review</a>
+            <a href="/admin/" class="opacity-90 hover:opacity-100">Admin</a>
           {% endif %}
-          <span class="opacity-70">{{ request.user.username }}</span>
+          <span class="opacity-70 ml-2 border-l border-white/20 pl-4">{{ request.user.username }}</span>
+          <a href="{% url 'accounts:logout' %}" class="opacity-70 hover:opacity-100 ml-2">Log out</a>
         {% else %}
-          <a href="/admin/login/?next={{ request.path }}" class="btn-primary px-3 py-1.5 rounded-lg">Log in</a>
+          <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn-primary px-3 py-1.5 rounded-lg border border-white/20">Log in</a>
+          <a href="{% url 'accounts:register' %}" class="bg-white text-[var(--forest)] px-3 py-1.5 rounded-lg font-medium">Register</a>
         {% endif %}
       </div>
     </div>

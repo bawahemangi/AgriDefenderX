@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Register - AgriDefenderX{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto">
+  <div class="card p-6">
+    <h1 class="font-serif text-2xl font-bold mb-1 text-center">Join AgriDefenderX</h1>
+    <p class="text-[var(--ink-soft)] text-sm text-center mb-6">Register your farm to get AI-powered crop health monitoring</p>
+
+    <form method="post" action="{% url 'accounts:register' %}" class="space-y-4">
+      {% csrf_token %}
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">First Name</label>
+          <input type="text" name="first_name" value="{{ post.first_name }}" class="w-full text-sm border {% if errors.first_name %}border-red-500{% else %}border-[var(--line)]{% endif %} rounded-lg p-2 bg-white">
+          {% if errors.first_name %}<p class="text-red-500 text-xs mt-1">{{ errors.first_name }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Last Name</label>
+          <input type="text" name="last_name" value="{{ post.last_name }}" class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">Username</label>
+        <input type="text" name="username" value="{{ post.username }}" class="w-full text-sm border {% if errors.username %}border-red-500{% else %}border-[var(--line)]{% endif %} rounded-lg p-2 bg-white">
+        {% if errors.username %}<p class="text-red-500 text-xs mt-1">{{ errors.username }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">Phone Number</label>
+        <input type="text" name="phone" value="{{ post.phone }}" class="w-full text-sm border {% if errors.phone %}border-red-500{% else %}border-[var(--line)]{% endif %} rounded-lg p-2 bg-white">
+        {% if errors.phone %}<p class="text-red-500 text-xs mt-1">{{ errors.phone }}</p>{% endif %}
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">District</label>
+          <select name="district" class="w-full text-sm border {% if errors.district %}border-red-500{% else %}border-[var(--line)]{% endif %} rounded-lg p-2 bg-white">
+            <option value="">Select District</option>
+            {% for d in districts %}
+            <option value="{{ d }}" {% if post.district == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+          {% if errors.district %}<p class="text-red-500 text-xs mt-1">{{ errors.district }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Taluka</label>
+          <input type="text" name="taluka" value="{{ post.taluka }}" class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Main Crop</label>
+          <select name="crop" class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+            <option value="">Select Crop</option>
+            {% for c in crops %}
+            <option value="{{ c }}" {% if post.crop == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Farm Area (Acres)</label>
+          <input type="number" step="0.1" name="area_acres" value="{{ post.area_acres }}" class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold mb-1">Preferred Language</label>
+        <select name="language" class="w-full text-sm border border-[var(--line)] rounded-lg p-2 bg-white">
+          <option value="en" {% if post.language == 'en' %}selected{% endif %}>English</option>
+          <option value="mr" {% if post.language == 'mr' %}selected{% endif %}>Marathi</option>
+          <option value="hi" {% if post.language == 'hi' %}selected{% endif %}>Hindi</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Password</label>
+          <input type="password" name="password1" class="w-full text-sm border {% if errors.password1 %}border-red-500{% else %}border-[var(--line)]{% endif %} rounded-lg p-2 bg-white">
+          {% if errors.password1 %}<p class="text-red-500 text-xs mt-1">{{ errors.password1 }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Confirm Password</label>
+          <input type="password" name="password2" class="w-full text-sm border {% if errors.password2 %}border-red-500{% else %}border-[var(--line)]{% endif %} rounded-lg p-2 bg-white">
+          {% if errors.password2 %}<p class="text-red-500 text-xs mt-1">{{ errors.password2 }}</p>{% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary w-full py-2.5 rounded-lg font-semibold mt-6">Create Account</button>
+    </form>
+    
+    <div class="mt-6 text-center text-sm text-[var(--ink-soft)]">
+      Already have an account? <a href="{% url 'accounts:login' %}" class="text-[var(--forest)] font-medium hover:underline">Log in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -123,8 +123,8 @@ REST_FRAMEWORK = {
     ],
 }
 
-LOGIN_URL = "/admin/login/"
-LOGIN_REDIRECT_URL = "/farmer/"
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/accounts/home/"
 
 # -- Crop Health System specific settings -----------------------------------
 

@@ -10,6 +10,12 @@ scikit-learn>=1.4
 pandas>=2.0
 numpy>=1.26
 
+# --- ML: ONNX disease classifier (HuggingFace BiernyVR/crop-disease-classifier) ---
+# EfficientNetV2-S, 38 classes, 99.98% val accuracy. Run download_model.py once to
+# fetch the model files into disease_model/. No GPU or PyTorch needed.
+onnxruntime>=1.18
+huggingface_hub>=0.23
+
 # --- ML: image classifier ---
 # torch/torchvision are only required if you're training or serving the
 # real CNN (ml/disease_classifier/model.py, train.py). The app runs fine

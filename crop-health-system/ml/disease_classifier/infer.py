@@ -8,17 +8,16 @@ classify_image(path_or_pil_image) -> dict:
         "disease": "Early blight",
         "confidence": 0.83,
         "top_k": [("Tomato___Early_blight", 0.83), ...],
-        "mode": "cnn" | "demo_heuristic",
+        "mode": "onnx_hf" | "cnn" | "demo_heuristic",
     }
 
-Resolution order:
-    1. If a trained checkpoint exists at CHECKPOINT_PATH and torch is
-       importable -> real CNN inference (model.py).
-    2. Otherwise -> demo_feature_model.pkl heuristic fallback (features.py +
-       train_demo_model.py), so the app still runs end-to-end without a
-       trained checkpoint. The result is clearly tagged mode="demo_heuristic"
-       so the rest of the pipeline (e.g. the expert-review threshold) can
-       treat it with appropriately lower trust.
+Resolution order (best to fallback):
+    1. ONNX model from HuggingFace (BiernyVR/crop-disease-classifier) via onnxruntime
+       -- EfficientNetV2-S, 38 classes, 99.98% val accuracy. This is the primary path.
+       -- Requires: onnxruntime, disease_model/ folder with .onnx + .onnx.data + classes.json
+    2. PyTorch CNN checkpoint (model.py) -- if torch is importable and checkpoint exists.
+    3. Demo heuristic fallback (features.py + demo_feature_model.pkl) -- always works,
+       clearly tagged mode="demo_heuristic" for lower-trust downstream handling.
 """
 from __future__ import annotations
 
@@ -27,22 +26,106 @@ import pickle
 from pathlib import Path
 from typing import Union
 
+import numpy as np
 from PIL import Image
 
 HERE = Path(__file__).parent
+
+# HuggingFace ONNX model paths (downloaded via download_model.py)
+ONNX_MODEL_DIR = HERE.parent.parent / "disease_model"
+ONNX_MODEL_PATH = ONNX_MODEL_DIR / "efficientnet_v2_s_best.onnx"
+ONNX_CLASSES_PATH = ONNX_MODEL_DIR / "classes.json"
+
+# PyTorch CNN checkpoint (trained manually via train.py)
 CHECKPOINT_PATH = HERE / "checkpoints" / "disease_classifier.pt"
+
+# Demo heuristic model
 DEMO_MODEL_PATH = HERE / "demo_feature_model.pkl"
 
+_onnx_cache = None
 _cnn_cache = None
 _demo_cache = None
 
 
-def _split_class_name(class_name: str) -> tuple[str, str]:
-    if "___" in class_name:
-        crop, disease = class_name.split("___", 1)
-    else:
-        crop, disease = "Unknown", class_name
-    return crop.replace("_", " "), disease.replace("_", " ")
+# ---------------------------------------------------------------------------
+# Path 1: ONNX (HuggingFace EfficientNetV2-S — primary path)
+# ---------------------------------------------------------------------------
+
+def _onnx_available() -> bool:
+    if not ONNX_MODEL_PATH.exists():
+        return False
+    try:
+        import onnxruntime  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _load_onnx():
+    global _onnx_cache
+    if _onnx_cache is not None:
+        return _onnx_cache
+
+    import onnxruntime as ort
+
+    with open(ONNX_CLASSES_PATH) as f:
+        meta = json.load(f)
+
+    classes = meta["classes"]
+    mean = np.array(meta["normalisation"]["mean"], dtype=np.float32)
+    std = np.array(meta["normalisation"]["std"], dtype=np.float32)
+    image_size = meta.get("image_size", 224)
+
+    # Use CPU provider; add CUDAExecutionProvider first if GPU is available
+    providers = ["CPUExecutionProvider"]
+    try:
+        import onnxruntime as ort2
+        if "CUDAExecutionProvider" in ort2.get_available_providers():
+            providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    except Exception:
+        pass
+
+    sess = ort.InferenceSession(str(ONNX_MODEL_PATH), providers=providers)
+    input_name = sess.get_inputs()[0].name
+
+    _onnx_cache = (sess, input_name, classes, mean, std, image_size)
+    return _onnx_cache
+
+
+def _preprocess_for_onnx(image: Image.Image, image_size: int,
+                          mean: np.ndarray, std: np.ndarray) -> np.ndarray:
+    """Resize → RGB → normalize → NCHW float32."""
+    img = image.convert("RGB").resize((image_size, image_size), Image.BILINEAR)
+    arr = np.array(img, dtype=np.float32) / 255.0          # HWC [0,1]
+    arr = (arr - mean) / std                               # normalize
+    arr = arr.transpose(2, 0, 1)[np.newaxis, ...]          # NCHW
+    return arr.astype(np.float32)
+
+
+def _infer_onnx(image: Image.Image, top_k: int = 3) -> tuple[list, str]:
+    sess, input_name, classes, mean, std, image_size = _load_onnx()
+    inp = _preprocess_for_onnx(image, image_size, mean, std)
+    logits = sess.run(None, {input_name: inp})[0][0]       # (38,)
+    # softmax
+    exp = np.exp(logits - logits.max())
+    probs = exp / exp.sum()
+    order = np.argsort(probs)[::-1][:top_k]
+    top = [(classes[i], float(probs[i])) for i in order]
+    return top, "onnx_hf"
+
+
+# ---------------------------------------------------------------------------
+# Path 2: PyTorch CNN checkpoint
+# ---------------------------------------------------------------------------
+
+def _cnn_available() -> bool:
+    if not CHECKPOINT_PATH.exists():
+        return False
+    try:
+        import torch  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 def _load_cnn():
@@ -70,6 +153,20 @@ def _load_cnn():
     return _cnn_cache
 
 
+def _infer_cnn(image: Image.Image, top_k: int = 3) -> tuple[list, str]:
+    model, classes, tf, torch = _load_cnn()
+    with torch.no_grad():
+        x = tf(image.convert("RGB")).unsqueeze(0)
+        probs = torch.softmax(model(x), dim=1)[0]
+    order = torch.argsort(probs, descending=True)[:top_k]
+    top = [(classes[i], float(probs[i])) for i in order]
+    return top, "cnn"
+
+
+# ---------------------------------------------------------------------------
+# Path 3: Demo heuristic fallback (sklearn RandomForest on color statistics)
+# ---------------------------------------------------------------------------
+
 def _load_demo():
     global _demo_cache
     if _demo_cache is not None:
@@ -80,37 +177,48 @@ def _load_demo():
     return _demo_cache
 
 
-def _cnn_available() -> bool:
-    if not CHECKPOINT_PATH.exists():
-        return False
-    try:
-        import torch  # noqa: F401
-        return True
-    except ImportError:
-        return False
+def _infer_demo(image: Image.Image, top_k: int = 3) -> tuple[list, str]:
+    from features import extract_features
+    payload = _load_demo()
+    clf = payload["model"]
+    feats = extract_features(image).reshape(1, -1)
+    probs = clf.predict_proba(feats)[0]
+    order = probs.argsort()[::-1][:top_k]
+    top = [(clf.classes_[i], float(probs[i])) for i in order]
+    return top, "demo_heuristic"
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def _split_class_name(class_name: str) -> tuple[str, str]:
+    """'Tomato___Early_blight' -> ('Tomato', 'Early blight')"""
+    if "___" in class_name:
+        crop, disease = class_name.split("___", 1)
+    else:
+        crop, disease = "Unknown", class_name
+    # clean up underscores and extra parens from PlantVillage naming
+    crop = crop.replace("_", " ").replace("(", "").replace(")", "").strip()
+    disease = disease.replace("_", " ").strip()
+    return crop, disease
 
 
 def classify_image(image: Union[str, Path, Image.Image], top_k: int = 3) -> dict:
+    """
+    Classify a leaf image and return disease/crop prediction.
+
+    Priority: ONNX (HuggingFace, 99.98% acc) > PyTorch CNN > Demo heuristic.
+    """
     if isinstance(image, (str, Path)):
         image = Image.open(image)
 
-    if _cnn_available():
-        model, classes, tf, torch = _load_cnn()
-        with torch.no_grad():
-            x = tf(image.convert("RGB")).unsqueeze(0)
-            probs = torch.softmax(model(x), dim=1)[0]
-        order = torch.argsort(probs, descending=True)[:top_k]
-        top = [(classes[i], float(probs[i])) for i in order]
-        mode = "cnn"
+    if _onnx_available():
+        top, mode = _infer_onnx(image, top_k)
+    elif _cnn_available():
+        top, mode = _infer_cnn(image, top_k)
     else:
-        from features import extract_features
-        payload = _load_demo()
-        clf, classes = payload["model"], payload["classes"]
-        feats = extract_features(image).reshape(1, -1)
-        probs = clf.predict_proba(feats)[0]
-        order = probs.argsort()[::-1][:top_k]
-        top = [(clf.classes_[i], float(probs[i])) for i in order]
-        mode = "demo_heuristic"
+        top, mode = _infer_demo(image, top_k)
 
     predicted_class, confidence = top[0]
     crop, disease = _split_class_name(predicted_class)
@@ -127,16 +235,14 @@ def classify_image(image: Union[str, Path, Image.Image], top_k: int = 3) -> dict
 
 if __name__ == "__main__":
     import sys
-    import numpy as np
 
     if len(sys.argv) > 1:
         result = classify_image(sys.argv[1])
     else:
-        # No sample image given -- synthesize one so this still runs as a
-        # smoke test with zero external inputs.
+        # Synthesize a greenish leaf image for smoke testing
         rng = np.random.default_rng(0)
-        arr = (rng.integers(60, 180, size=(128, 128, 3))).astype("uint8")
-        arr[:, :, 1] = np.clip(arr[:, :, 1] + 40, 0, 255)  # push it greenish
+        arr = rng.integers(60, 180, size=(128, 128, 3)).astype("uint8")
+        arr[:, :, 1] = np.clip(arr[:, :, 1] + 40, 0, 255)
         result = classify_image(Image.fromarray(arr))
 
     print(json.dumps(result, indent=2))
