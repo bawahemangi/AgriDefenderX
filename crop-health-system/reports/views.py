@@ -68,13 +68,18 @@ def upload_report(request):
         crop_cycle_id = request.POST.get("crop_cycle") or None
         crop_cycle = CropCycle.objects.filter(id=crop_cycle_id, farm=farm).first() if crop_cycle_id else None
 
+        lat_str = request.POST.get("latitude")
+        lng_str = request.POST.get("longitude")
+        lat = float(lat_str) if lat_str else farm.latitude
+        lng = float(lng_str) if lng_str else farm.longitude
+
         report = DiseaseReport.objects.create(
             farmer=request.user,
             farm=farm,
             crop_cycle=crop_cycle,
             image=request.FILES["image"],
-            latitude=request.POST.get("latitude") or farm.latitude,
-            longitude=request.POST.get("longitude") or farm.longitude,
+            latitude=lat,
+            longitude=lng,
         )
         process_disease_report(report)
         return redirect("reports:report_detail", pk=report.pk)
