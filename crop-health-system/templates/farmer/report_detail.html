@@ -57,6 +57,17 @@
 
   <div class="card p-5">
     <h2 class="font-serif text-lg font-semibold mb-2">Advisory</h2>
+    
+    {% if report.advisory_audio %}
+    <div class="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+      <p class="text-xs font-semibold text-[var(--ink-soft)] mb-2 uppercase tracking-wide">Listen to Advisory</p>
+      <audio controls class="w-full h-10">
+        <source src="{{ report.advisory_audio.url }}" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+    {% endif %}
+
     <div class="text-sm leading-relaxed">
       {{ report.advisory_text|render_advisory }}
     </div>
