@@ -43,7 +43,7 @@ def _recent_pest_count(farm, days: int = 7) -> int:
     return total or 0
 
 
-def process_disease_report(report: DiseaseReport) -> DiseaseReport:
+def process_disease_report(report: DiseaseReport, language: str = None) -> DiseaseReport:
     # -- 1. Image classification --
     import infer as classifier_infer  # ml/disease_classifier/infer.py
 
@@ -87,7 +87,9 @@ def process_disease_report(report: DiseaseReport) -> DiseaseReport:
     # -- 5. Advisory (RAG) --
     import generate as advisory_generate  # ml/advisory_rag/generate.py
 
-    language = report.farmer.profile.preferred_language if hasattr(report.farmer, "profile") else "en"
+    if not language:
+        language = report.farmer.profile.preferred_language if hasattr(report.farmer, "profile") else "en"
+    
     advisory = advisory_generate.generate_advisory(
         crop=result["crop"],
         disease=result["disease"],

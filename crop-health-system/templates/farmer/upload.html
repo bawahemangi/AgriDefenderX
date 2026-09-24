@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Scan Crop{% endblock %}
 {% block content %}
 <div class="max-w-xl mx-auto">
@@ -7,9 +8,8 @@
 
   {% if not farms %}
     <div class="card p-5 text-sm">
-      You don't have a farm registered yet. Add one from the
-      <a href="/admin/farms/farm/add/" class="underline font-medium">admin panel</a> to get started
-      (a farmer-facing "Add Farm" form is a natural next build — this MVP registers farms via admin/seed data).
+      <p class="text-[var(--ink)]">{% trans "You don't have a farm registered yet." %}</p>
+      <p class="mt-2"><a href="{% url 'accounts:add_farm' %}" class="underline font-medium text-[var(--forest)]">{% trans "Add a farm" %}</a> {% trans "to get started." %}</p>
     </div>
   {% else %}
   <form method="post" enctype="multipart/form-data" class="card p-5 space-y-4">

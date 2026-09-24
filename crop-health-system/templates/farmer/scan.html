@@ -1,0 +1,661 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Scan Your Crop" %}{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Page Variables ──────────────────────────────────────────── */
+  :root {
+    --scan-gradient: linear-gradient(135deg, #1a3a28 0%, #2d5c42 50%, #1a3a28 100%);
+    --glass: rgba(255,255,255,0.08);
+    --glass-border: rgba(255,255,255,0.15);
+  }
+
+  /* ── Hero Banner ─────────────────────────────────────────────── */
+  .scan-hero {
+    background: var(--scan-gradient);
+    border-radius: 20px;
+    padding: 2rem;
+    color: white;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .scan-hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .scan-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: -40px;
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+
+  /* ── Drop Zone ───────────────────────────────────────────────── */
+  #drop-zone {
+    border: 2.5px dashed var(--line);
+    border-radius: 16px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    position: relative;
+  }
+  #drop-zone:hover, #drop-zone.dragover {
+    border-color: var(--forest);
+    background: #f0f7f3;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(47,74,60,0.12);
+  }
+  #drop-zone.has-image {
+    padding: 0;
+    border: none;
+  }
+  #preview-img {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 14px;
+    display: none;
+  }
+
+  /* ── Camera Button ───────────────────────────────────────────── */
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s ease;
+  }
+  .btn-camera {
+    background: var(--forest);
+    color: white;
+  }
+  .btn-camera:hover { background: var(--forest-dark); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(47,74,60,0.3); }
+  .btn-mic {
+    background: white;
+    color: var(--forest);
+    border: 2px solid var(--forest);
+  }
+  .btn-mic:hover { background: #f0f7f3; transform: translateY(-1px); }
+  .btn-mic.recording {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #ef4444;
+    animation: pulse-red 1.5s infinite;
+  }
+  @keyframes pulse-red {
+    0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
+    50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+  }
+
+  /* ── Scan Button ─────────────────────────────────────────────── */
+  #scan-btn {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 14px;
+    background: var(--forest);
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  #scan-btn:hover:not(:disabled) { background: var(--forest-dark); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(47,74,60,0.35); }
+  #scan-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+  /* ── Voice Input Box ─────────────────────────────────────────── */
+  #voice-text {
+    width: 100%;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  #voice-text:focus { border-color: var(--forest); }
+
+  /* ── Results ─────────────────────────────────────────────────── */
+  #results-panel {
+    display: none;
+    animation: slide-up 0.4s ease;
+  }
+  @keyframes slide-up {
+    from { opacity:0; transform: translateY(20px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.9rem;
+  }
+  .result-row:last-child { border-bottom: none; }
+  .result-label { color: var(--ink-soft); font-weight: 500; }
+  .result-value { font-weight: 700; text-align: right; }
+
+  /* ── Loading Spinner ─────────────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Advisory Text ───────────────────────────────────────────── */
+  #advisory-text {
+    white-space: pre-wrap;
+    line-height: 1.7;
+    font-size: 0.9rem;
+  }
+  #advisory-text strong { font-weight: 700; color: var(--forest); }
+
+  /* ── Confidence Bar ──────────────────────────────────────────── */
+  .conf-bar-track {
+    background: #e5e7eb;
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .conf-bar-fill {
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3F7D58, #2F4A3C);
+    transition: width 1s ease;
+  }
+
+  /* ── Auth Banner ─────────────────────────────────────────────── */
+  .auth-banner {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 1px solid #fbbf24;
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+  }
+
+  /* ── Language Select ─────────────────────────────────────────── */
+  .lang-btn {
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid var(--line);
+    background: white;
+    transition: all 0.2s;
+  }
+  .lang-btn.active {
+    background: var(--forest);
+    color: white;
+    border-color: var(--forest);
+  }
+
+  /* ── Mic wave animation ──────────────────────────────────────── */
+  .mic-waves {
+    display: none;
+    align-items: center;
+    gap: 3px;
+    height: 20px;
+  }
+  .mic-waves.show { display: flex; }
+  .wave-bar {
+    width: 4px;
+    border-radius: 2px;
+    background: #ef4444;
+    animation: wave-bounce 0.8s ease-in-out infinite;
+  }
+  .wave-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+  .wave-bar:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+  .wave-bar:nth-child(3) { height: 12px; animation-delay: 0.2s; }
+  .wave-bar:nth-child(4) { height: 20px; animation-delay: 0.3s; }
+  .wave-bar:nth-child(5) { height: 10px; animation-delay: 0.4s; }
+  @keyframes wave-bounce {
+    0%,100% { transform: scaleY(0.5); }
+    50% { transform: scaleY(1); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto">
+
+  <!-- ── Hero Banner ─────────────────────────────────────────────── -->
+  <div class="scan-hero">
+    <div class="relative z-10">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-4xl">🔬</span>
+        <div>
+          <h1 class="font-serif text-2xl font-bold">Crop Health Scanner</h1>
+          <p class="text-white/70 text-sm">पीक आरोग्य तपासणी — Fasal Svaasthy Jaanch</p>
+        </div>
+      </div>
+      <p class="text-white/80 text-sm mt-2 leading-relaxed">
+        {% trans "Take a photo of your crop leaf — no account needed. Get an instant AI-powered disease diagnosis and treatment advice." %}
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Auth notice (for guests) ───────────────────────────────── -->
+  {% if not request.user.is_authenticated %}
+  <div class="auth-banner mb-4">
+    <p class="text-sm font-semibold text-amber-800 mb-1">💡 {% trans "Scan freely — no login needed!" %}</p>
+    <p class="text-xs text-amber-700 mb-2">{% trans "Create a free account to save scan history and receive personalised Marathi/Hindi advisories." %}</p>
+    <div class="flex gap-2">
+      <a href="{% url 'accounts:login' %}" class="text-xs px-3 py-1.5 rounded-lg bg-amber-700 text-white font-semibold hover:bg-amber-800 transition-colors">{% trans "Log in" %}</a>
+      <a href="{% url 'accounts:register' %}" class="text-xs px-3 py-1.5 rounded-lg border border-amber-700 text-amber-800 font-semibold hover:bg-amber-50 transition-colors">{% trans "Register" %}</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Language Selector ───────────────────────────────────────── -->
+  <div class="card p-4 mb-4">
+    <p class="text-xs font-semibold text-[var(--ink-soft)] uppercase tracking-wide mb-2">{% trans "Advisory Language" %}</p>
+    <div class="flex gap-2 flex-wrap">
+      <button class="lang-btn active" data-lang="en" id="lang-en">🇬🇧 English</button>
+      <button class="lang-btn" data-lang="mr" id="lang-mr">🇮🇳 मराठी</button>
+      <button class="lang-btn" data-lang="hi" id="lang-hi">🇮🇳 हिंदी</button>
+    </div>
+  </div>
+
+  <!-- ── Scan Form ───────────────────────────────────────────────── -->
+  <div class="card p-5 mb-4">
+    <h2 class="font-semibold text-base mb-4 text-[var(--forest)] flex items-center gap-2">
+      <span>📸</span> {% trans "Upload or Capture Leaf Photo" %}
+    </h2>
+
+    <!-- Drop Zone -->
+    <div id="drop-zone" onclick="document.getElementById('image-input').click()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+      <img id="preview-img" alt="Preview">
+      <div id="drop-placeholder">
+        <div class="text-5xl mb-3">🌿</div>
+        <p class="font-semibold text-[var(--ink)] mb-1">{% trans "Tap to upload or drag & drop" %}</p>
+        <p class="text-xs text-[var(--ink-soft)]">{% trans "Supports JPG, PNG, WEBP — clear photo of a single leaf works best" %}</p>
+      </div>
+    </div>
+    <input type="file" id="image-input" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+
+    <!-- Action buttons -->
+    <div class="flex gap-3 mt-4 flex-wrap">
+      <button class="action-btn btn-camera" onclick="document.getElementById('image-input').click()">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+        {% trans "Camera / Gallery" %}
+      </button>
+      <button class="action-btn btn-mic" id="mic-btn" onclick="toggleMic()">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+        <span id="mic-label">{% trans "Describe crop" %}</span>
+        <div class="mic-waves" id="mic-waves">
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Voice / Text Description ───────────────────────────────── -->
+  <div class="card p-5 mb-4">
+    <h2 class="font-semibold text-base mb-2 text-[var(--forest)] flex items-center gap-2">
+      <span>🎙️</span> {% trans "Describe the Problem" %} <span class="text-xs font-normal text-[var(--ink-soft)]">({% trans "optional" %})</span>
+    </h2>
+    <textarea id="voice-text" placeholder="{% trans 'e.g. &quot;Yellow spots on tomato leaves, started 3 days ago&quot;' %}"></textarea>
+    <p class="text-xs text-[var(--ink-soft)] mt-1">{% trans "Press the 🎙 button above to speak, or type directly here." %}</p>
+  </div>
+
+  <!-- ── Scan Button ─────────────────────────────────────────────── -->
+  <button id="scan-btn" onclick="runScan()" disabled>
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    <span id="scan-label">{% trans "Scan Crop" %}</span>
+  </button>
+
+  <!-- ── Results Panel ───────────────────────────────────────────── -->
+  <div id="results-panel" class="mt-5 space-y-4">
+
+    <!-- Disease Card -->
+    <div class="card p-5">
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-[var(--ink-soft)] font-semibold mb-1">{% trans "Detected" %}</p>
+          <h2 class="font-serif text-2xl font-bold text-[var(--ink)]" id="res-disease">—</h2>
+          <p class="text-sm text-[var(--ink-soft)]" id="res-crop"></p>
+        </div>
+        <span class="badge risk-HIGH" id="res-risk-badge" style="display:none"></span>
+      </div>
+
+      <!-- Confidence -->
+      <div id="conf-block" style="display:none" class="mb-4">
+        <div class="flex justify-between text-xs mb-1">
+          <span class="text-[var(--ink-soft)] font-medium">{% trans "Analysis confidence" %}</span>
+          <span class="font-bold text-[var(--forest)]" id="conf-pct">0%</span>
+        </div>
+        <div class="conf-bar-track">
+          <div class="conf-bar-fill" id="conf-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div id="res-rows" class="divide-y divide-[var(--line)]"></div>
+    </div>
+
+    <!-- Advisory Card -->
+    <div class="card p-5" id="advisory-card" style="display:none">
+      <h3 class="font-serif text-lg font-semibold mb-3 flex items-center gap-2 text-[var(--forest)]">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        {% trans "Treatment Advisory" %}
+      </h3>
+
+      <!-- Audio Player -->
+      <div id="audio-block" style="display:none" class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+        <p class="text-xs font-semibold text-[var(--ink-soft)] mb-2 uppercase tracking-wide flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/></svg>
+          🎧 {% trans "Listen to Advisory" %}
+        </p>
+        <audio id="advisory-audio" controls class="w-full h-10">
+          <source id="advisory-audio-src" src="" type="audio/mpeg">
+        </audio>
+      </div>
+
+      <div id="advisory-text" class="text-sm leading-relaxed text-[var(--ink)]"></div>
+
+      <div id="advisory-source" class="text-xs text-[var(--ink-soft)] mt-4 pt-3 border-t border-[var(--line)]" style="display:none"></div>
+    </div>
+
+    <!-- Save Prompt (guests only) -->
+    {% if not request.user.is_authenticated %}
+    <div class="auth-banner" id="save-prompt" style="display:none">
+      <p class="font-semibold text-amber-800 text-sm mb-1">💾 {% trans "Want to save this scan?" %}</p>
+      <p class="text-xs text-amber-700 mb-2">{% trans "Create a free account to store your history, get voice advisories in Marathi, and get flagged cases reviewed by a government expert." %}</p>
+      <div class="flex gap-2">
+        <a href="{% url 'accounts:register' %}" class="text-xs px-3 py-1.5 rounded-lg bg-amber-700 text-white font-semibold hover:bg-amber-800 transition-colors">{% trans "Create Account" %}</a>
+        <a href="{% url 'accounts:login' %}" class="text-xs px-3 py-1.5 rounded-lg border border-amber-700 text-amber-800 font-semibold hover:bg-amber-50 transition-colors">{% trans "Log in" %}</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Scan Again -->
+    <button onclick="resetScan()" class="w-full py-3 rounded-xl border-2 border-[var(--forest)] text-[var(--forest)] font-bold hover:bg-[#f0f7f3] transition-colors">
+      🔄 {% trans "Scan Another Crop" %}
+    </button>
+
+  </div><!-- /results-panel -->
+
+</div><!-- /max-w-xl -->
+
+<script>
+/* ────────────────────────────────────────────────
+   State
+──────────────────────────────────────────────── */
+let selectedFile   = null;
+let recognition    = null;
+let isRecording    = false;
+let selectedLang   = 'en';
+
+/* ────────────────────────────────────────────────
+   Language picker (synced with global nav switcher)
+──────────────────────────────────────────────── */
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedLang = btn.dataset.lang;
+    // Also update the global nav switcher
+    if (window.switchLang) window.switchLang(selectedLang);
+  });
+});
+
+// On load — sync scan page lang buttons with the global active lang
+document.addEventListener('DOMContentLoaded', () => {
+  const activeLang = window.getActiveLang ? window.getActiveLang() : 'en';
+  selectedLang = activeLang;
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === activeLang);
+  });
+});
+
+/* ────────────────────────────────────────────────
+   File / Drop handling
+──────────────────────────────────────────────── */
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) previewFile(file);
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) previewFile(file);
+}
+
+function previewFile(file) {
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = document.getElementById('preview-img');
+    img.src = e.target.result;
+    img.style.display = 'block';
+    document.getElementById('drop-placeholder').style.display = 'none';
+    document.getElementById('drop-zone').classList.add('has-image');
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('scan-btn').disabled = false;
+}
+
+/* ────────────────────────────────────────────────
+   Microphone (Web Speech API)
+──────────────────────────────────────────────── */
+function toggleMic() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Voice input is not supported in this browser. Please use Chrome or Edge.');
+    return;
+  }
+
+  if (isRecording) {
+    recognition.stop();
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  // Language mapping for speech
+  const speechLang = { en: 'en-IN', mr: 'mr-IN', hi: 'hi-IN' };
+  recognition.lang = speechLang[selectedLang] || 'en-IN';
+
+  recognition.onstart = () => {
+    isRecording = true;
+    const btn = document.getElementById('mic-btn');
+    btn.classList.add('recording');
+    document.getElementById('mic-label').textContent = 'Listening…';
+    document.getElementById('mic-waves').classList.add('show');
+  };
+
+  recognition.onresult = (e) => {
+    let transcript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    document.getElementById('voice-text').value = transcript;
+  };
+
+  recognition.onerror = (e) => {
+    console.warn('Speech error', e.error);
+    stopMic();
+  };
+
+  recognition.onend = stopMic;
+  recognition.start();
+}
+
+function stopMic() {
+  isRecording = false;
+  const btn = document.getElementById('mic-btn');
+  btn.classList.remove('recording');
+  document.getElementById('mic-label').textContent = 'Describe crop';
+  document.getElementById('mic-waves').classList.remove('show');
+}
+
+/* ────────────────────────────────────────────────
+   Run Scan (AJAX to backend)
+──────────────────────────────────────────────── */
+async function runScan() {
+  if (!selectedFile) return;
+
+  const btn   = document.getElementById('scan-btn');
+  const label = document.getElementById('scan-label');
+  btn.disabled = true;
+  label.innerHTML = '<span class="spinner"></span> Analysing…';
+
+  const formData = new FormData();
+  formData.append('image', selectedFile);
+  formData.append('language', selectedLang);
+  formData.append('voice_text', document.getElementById('voice-text').value);
+  formData.append('csrfmiddlewaretoken', getCsrf());
+
+  try {
+    const resp = await fetch('/scan/analyse/', {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await resp.json();
+
+    if (!resp.ok) throw new Error(data.error || 'Analysis failed');
+    showResults(data);
+  } catch (err) {
+    alert('Error: ' + err.message);
+    btn.disabled = false;
+    label.textContent = 'Scan Crop';
+  }
+}
+
+/* ────────────────────────────────────────────────
+   Render Results
+──────────────────────────────────────────────── */
+function showResults(data) {
+  document.getElementById('results-panel').style.display = 'block';
+  document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Disease / crop
+  document.getElementById('res-disease').textContent = data.disease || 'Healthy / Unknown';
+  document.getElementById('res-crop').textContent    = data.crop ? `Crop: ${data.crop}` : '';
+
+  // Risk badge
+  if (data.risk_band) {
+    const badge = document.getElementById('res-risk-badge');
+    badge.textContent = data.risk_band + ' RISK';
+    badge.className = `badge risk-${data.risk_band}`;
+    badge.style.display = 'inline-block';
+  }
+
+  // Confidence bar
+  if (data.confidence != null) {
+    const pct = Math.round(data.confidence * 100);
+    document.getElementById('conf-block').style.display = 'block';
+    document.getElementById('conf-pct').textContent = pct + '%';
+    setTimeout(() => {
+      document.getElementById('conf-bar').style.width = pct + '%';
+    }, 100);
+  }
+
+  // Extra rows
+  const rows = [];
+  if (data.classifier_mode) rows.push(['Mode', data.classifier_mode === 'demo_heuristic' ? '⚠ Demo mode' : '✅ CNN model']);
+  const rowsEl = document.getElementById('res-rows');
+  rowsEl.innerHTML = rows.map(([k,v]) => `
+    <div class="result-row">
+      <span class="result-label">${k}</span>
+      <span class="result-value">${v}</span>
+    </div>`).join('');
+
+  // Advisory
+  if (data.advisory_text) {
+    document.getElementById('advisory-card').style.display = 'block';
+    const el = document.getElementById('advisory-text');
+    // Convert **bold** markdown
+    el.innerHTML = data.advisory_text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+
+    if (data.advisory_source) {
+      const src = document.getElementById('advisory-source');
+      src.textContent = `Source: ${data.advisory_source} · mode: ${data.advisory_mode || ''}`;
+      src.style.display = 'block';
+    }
+
+    // Audio
+    if (data.audio_url) {
+      document.getElementById('advisory-audio-src').src = data.audio_url;
+      document.getElementById('advisory-audio').load();
+      document.getElementById('audio-block').style.display = 'block';
+    }
+  }
+
+  // Save prompt for guests
+  const savePrompt = document.getElementById('save-prompt');
+  if (savePrompt) savePrompt.style.display = 'block';
+
+  // Reset scan button
+  document.getElementById('scan-label').textContent = 'Scan Crop';
+}
+
+/* ────────────────────────────────────────────────
+   Reset
+──────────────────────────────────────────────── */
+function resetScan() {
+  selectedFile = null;
+  document.getElementById('results-panel').style.display = 'none';
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('drop-placeholder').style.display = 'block';
+  document.getElementById('drop-zone').classList.remove('has-image');
+  document.getElementById('voice-text').value = '';
+  document.getElementById('image-input').value = '';
+  document.getElementById('scan-btn').disabled = true;
+  document.getElementById('scan-label').textContent = 'Scan Crop';
+  document.getElementById('conf-block').style.display = 'none';
+  document.getElementById('advisory-card').style.display = 'none';
+  document.getElementById('audio-block').style.display = 'none';
+  document.getElementById('res-risk-badge').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ────────────────────────────────────────────────
+   CSRF helper
+──────────────────────────────────────────────── */
+function getCsrf() {
+  return document.cookie.split('; ')
+    .find(r => r.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+</script>
+{% endblock %}

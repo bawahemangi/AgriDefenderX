@@ -1,5 +1,6 @@
+{% load i18n %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,30 +30,151 @@
   .risk-MEDIUM{ color:var(--risk-med); background:var(--risk-med-bg); }
   .risk-LOW{ color:var(--risk-low); background:var(--risk-low-bg); }
   .badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-weight:700; font-size:0.72rem; letter-spacing:0.03em; }
+
+  /* ── Language Switcher (navbar) ────────────────────────────── */
+  .lang-switcher {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .lang-switcher-btn {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: rgba(255,255,255,0.7);
+    background: transparent;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .lang-switcher-btn:hover {
+    color: white;
+    background: rgba(255,255,255,0.15);
+  }
+  .lang-switcher-btn.active {
+    background: white;
+    color: var(--forest);
+  }
+
+  /* ── Mobile lang bar (bottom of nav on small screens) ─────── */
+  .lang-bar-mobile {
+    background: var(--forest-dark);
+    padding: 6px 16px;
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+  .lang-bar-mobile-btn {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: rgba(255,255,255,0.65);
+    background: transparent;
+  }
+  .lang-bar-mobile-btn.active {
+    background: white;
+    color: var(--forest);
+  }
+  .lang-bar-mobile-btn:hover:not(.active) { color: white; }
+
+  /* ── Toast notification ────────────────────────────────────── */
+  #lang-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1E2A22;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    z-index: 9999;
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #lang-toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
 <body class="min-h-screen flex flex-col">
+
+  <!-- Hidden form used by JS to POST language change to Django i18n endpoint -->
+  <form id="lang-form" method="post" action="/i18n/setlang/" style="display:none">
+    {% csrf_token %}
+    <input type="hidden" name="language" id="lang-form-lang">
+    <input type="hidden" name="next" id="lang-form-next" value="{{ request.path }}">
+  </form>
+
   <nav class="brand-nav text-white">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-2 font-serif text-lg font-semibold">
-        🌾 Crop Health System <span class="hidden sm:inline text-xs font-sans font-normal opacity-70 ml-1">| Govt. of Maharashtra — MSInS</span>
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <a href="/" class="flex items-center gap-2 font-serif text-lg font-semibold shrink-0">
+        🌾 {% trans "Crop Health System" %} <span class="hidden sm:inline text-xs font-sans font-normal opacity-70 ml-1">| {% trans "Govt. of Maharashtra — MSInS" %}</span>
       </a>
-      <div class="flex items-center gap-4 text-sm">
+
+      <!-- Desktop nav links + lang switcher -->
+      <div class="hidden sm:flex items-center gap-4 text-sm">
+        <a href="{% url 'reports:scan_page' %}" class="opacity-90 hover:opacity-100 font-medium flex items-center gap-1">🔬 {% trans "Scan Crop" %}</a>
         {% if request.user.is_authenticated %}
-          <a href="{% url 'accounts:farmer_home' %}" class="opacity-90 hover:opacity-100 font-medium">Home</a>
-          <a href="{% url 'reports:upload_report' %}" class="opacity-90 hover:opacity-100">Scan Crop</a>
+          <a href="{% url 'accounts:farmer_home' %}" class="opacity-90 hover:opacity-100 font-medium">{% trans "Home" %}</a>
           {% if request.user.is_staff %}
-            <a href="{% url 'dashboard:index' %}" class="opacity-90 hover:opacity-100">Officer Dashboard</a>
-            <a href="/admin/" class="opacity-90 hover:opacity-100">Admin</a>
+            <a href="{% url 'dashboard:index' %}" class="opacity-90 hover:opacity-100">{% trans "Dashboard" %}</a>
+            <a href="/admin/" class="opacity-90 hover:opacity-100">{% trans "Admin" %}</a>
           {% endif %}
-          <span class="opacity-70 ml-2 border-l border-white/20 pl-4">{{ request.user.username }}</span>
-          <a href="{% url 'accounts:logout' %}" class="opacity-70 hover:opacity-100 ml-2">Log out</a>
+          <span class="opacity-70 border-l border-white/20 pl-4">{{ request.user.username }}</span>
+          <a href="{% url 'accounts:logout' %}" class="opacity-70 hover:opacity-100">{% trans "Log out" %}</a>
         {% else %}
-          <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn-primary px-3 py-1.5 rounded-lg border border-white/20">Log in</a>
-          <a href="{% url 'accounts:register' %}" class="bg-white text-[var(--forest)] px-3 py-1.5 rounded-lg font-medium">Register</a>
+          <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn-primary px-3 py-1.5 rounded-lg border border-white/20">{% trans "Log in" %}</a>
+          <a href="{% url 'accounts:register' %}" class="bg-white text-[var(--forest)] px-3 py-1.5 rounded-lg font-medium">{% trans "Register" %}</a>
         {% endif %}
+
+        <!-- Desktop Language Switcher -->
+        <div class="lang-switcher ml-2" id="lang-switcher-desktop" role="group" aria-label="Select language">
+          <button class="lang-switcher-btn" data-lang="en" onclick="switchLang('en')" title="English">EN</button>
+          <button class="lang-switcher-btn" data-lang="mr" onclick="switchLang('mr')" title="मराठी">मर</button>
+          <button class="lang-switcher-btn" data-lang="hi" onclick="switchLang('hi')" title="हिंदी">हि</button>
+        </div>
       </div>
+
+      <!-- Mobile hamburger area — just show lang toggle -->
+      <div class="sm:hidden flex items-center gap-3">
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'accounts:logout' %}" class="opacity-70 text-sm">↩</a>
+        {% else %}
+          <a href="{% url 'accounts:login' %}" class="text-sm opacity-90 font-semibold">{% trans "Log in" %}</a>
+        {% endif %}
+        <div class="lang-switcher" id="lang-switcher-mobile-nav">
+          <button class="lang-switcher-btn" data-lang="en" onclick="switchLang('en')">EN</button>
+          <button class="lang-switcher-btn" data-lang="mr" onclick="switchLang('mr')">मर</button>
+          <button class="lang-switcher-btn" data-lang="hi" onclick="switchLang('hi')">हि</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile secondary nav bar -->
+    <div class="sm:hidden border-t border-white/10 px-4 py-2 flex items-center gap-4 text-xs overflow-x-auto">
+      <a href="{% url 'reports:scan_page' %}" class="opacity-90 shrink-0">🔬 {% trans "Scan" %}</a>
+      {% if request.user.is_authenticated %}
+        <a href="{% url 'accounts:farmer_home' %}" class="opacity-80 shrink-0">{% trans "Home" %}</a>
+        {% if request.user.is_staff %}
+          <a href="{% url 'dashboard:index' %}" class="opacity-80 shrink-0">{% trans "Dashboard" %}</a>
+        {% endif %}
+      {% else %}
+        <a href="{% url 'accounts:register' %}" class="opacity-80 shrink-0">{% trans "Register" %}</a>
+      {% endif %}
     </div>
   </nav>
 
@@ -66,7 +188,72 @@
   </main>
 
   <footer class="text-center text-xs text-[var(--ink-soft)] py-6">
-    Problem Statement 26131 — Early detection &amp; management of crop diseases and pest infestations · Government of Maharashtra
+    {% trans "Problem Statement 26131 — Early detection & management of crop diseases and pest infestations · Government of Maharashtra" %}
   </footer>
+
+  <!-- Toast -->
+  <div id="lang-toast">{% trans "Language changed" %}</div>
+
+<script>
+/* ────────────────────────────────────────────────
+   Language Switcher Logic
+   - Reads active lang from cookie / localStorage
+   - Highlights the correct button on load
+   - On click: stores in localStorage AND posts to
+     Django's i18n set_language to update session
+──────────────────────────────────────────────── */
+
+const LANG_LABELS = {
+  en: { short: 'EN',  full: '🇬🇧 English',  toast: 'Language set to English' },
+  mr: { short: 'मर', full: '🇮🇳 मराठी',    toast: 'भाषा मराठी वर बदलली' },
+  hi: { short: 'हि', full: '🇮🇳 हिंदी',     toast: 'भाषा हिंदी में बदली गई' },
+};
+
+function getActiveLang() {
+  // Priority: Django session cookie > localStorage > navigator language > 'en'
+  const cookie = document.cookie.split('; ').find(r => r.startsWith('django_language='));
+  if (cookie) return cookie.split('=')[1];
+  return localStorage.getItem('agri_lang') || 'en';
+}
+
+function highlightLang(lang) {
+  document.querySelectorAll('.lang-switcher-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+}
+
+function showToast(lang) {
+  const toast = document.getElementById('lang-toast');
+  toast.textContent = LANG_LABELS[lang]?.toast || 'Language changed';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function switchLang(lang) {
+  if (lang === getActiveLang()) return;
+
+  // Store in localStorage for advisory language default
+  localStorage.setItem('agri_lang', lang);
+
+  // Highlight immediately (optimistic update)
+  highlightLang(lang);
+  showToast(lang);
+
+  // Post to Django i18n endpoint to store in session
+  document.getElementById('lang-form-lang').value = lang;
+  document.getElementById('lang-form-next').value = window.location.pathname + window.location.search;
+  document.getElementById('lang-form').submit();
+}
+
+// Init on page load
+document.addEventListener('DOMContentLoaded', () => {
+  highlightLang(getActiveLang());
+});
+
+// Expose globally so scan.html can read it
+window.getActiveLang = getActiveLang;
+</script>
+
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>

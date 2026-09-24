@@ -1,0 +1,225 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-24 19:00+0530\n"
+"PO-Revision-Date: 2026-09-24 19:00+0530\n"
+"Last-Translator: Auto <auto@example.com>\n"
+"Language-Team: hi <LL@li.org>\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Crop Health System"
+msgstr "फसल स्वास्थ्य प्रणाली"
+
+msgid "Govt. of Maharashtra — MSInS"
+msgstr "महाराष्ट्र सरकार — MSInS"
+
+msgid "Scan Crop"
+msgstr "फसल स्कैन करें"
+
+msgid "Home"
+msgstr "होम"
+
+msgid "Dashboard"
+msgstr "डैशबोर्ड"
+
+msgid "Admin"
+msgstr "एडमिन"
+
+msgid "Log out"
+msgstr "लॉग आउट करें"
+
+msgid "Log in"
+msgstr "लॉग इन करें"
+
+msgid "Register"
+msgstr "रजिस्टर करें"
+
+msgid "Scan"
+msgstr "स्कैन"
+
+msgid ""
+"Problem Statement 26131 — Early detection & management of crop diseases and "
+"pest infestations · Government of Maharashtra"
+msgstr ""
+"समस्या विवरण 26131 — फसल रोगों और कीटों की प्रारंभिक पहचान · महाराष्ट्र "
+"सरकार"
+
+msgid "Language changed"
+msgstr "भाषा बदल गई"
+
+msgid "Scan Your Crop"
+msgstr "अपनी फसल स्कैन करें"
+
+msgid ""
+"Take a photo of your crop leaf — no account needed. Get an instant AI-"
+"powered disease diagnosis and treatment advice."
+msgstr ""
+"अपनी फसल के पत्ते की तस्वीर लें - खाते की आवश्यकता नहीं है। त्वरित AI-आधारित"
+" निदान प्राप्त करें।"
+
+msgid "Scan freely — no login needed!"
+msgstr "स्वतंत्र रूप से स्कैन करें - लॉग इन की आवश्यकता नहीं!"
+
+msgid ""
+"Create a free account to save scan history and receive personalised "
+"Marathi/Hindi advisories."
+msgstr ""
+"अपने स्कैन इतिहास को सहेजने और व्यक्तिगत सलाह प्राप्त करने के लिए निःशुल्क "
+"खाता बनाएं।"
+
+msgid "Advisory Language"
+msgstr "सलाह की भाषा"
+
+msgid "Upload or Capture Leaf Photo"
+msgstr "पत्ते की फोटो अपलोड करें या खींचें"
+
+msgid "Tap to upload or drag & drop"
+msgstr "अपलोड करने के लिए टैप करें"
+
+msgid "Supports JPG, PNG, WEBP — clear photo of a single leaf works best"
+msgstr ""
+"JPG, PNG, WEBP समर्थित — एक पत्ते की स्पष्ट तस्वीर सबसे अच्छी काम करती है"
+
+msgid "Camera / Gallery"
+msgstr "कैमरा / गैलरी"
+
+msgid "Describe crop"
+msgstr "फसल का वर्णन करें"
+
+msgid "Describe the Problem"
+msgstr "समस्या का वर्णन करें"
+
+msgid "optional"
+msgstr "वैकल्पिक"
+
+msgid "e.g. \"Yellow spots on tomato leaves, started 3 days ago\""
+msgstr "उदा. \"टमाटर के पत्तों पर पीले धब्बे, 3 दिन पहले शुरू हुए\""
+
+msgid "Press the 🎙 button above to speak, or type directly here."
+msgstr "बोलने के लिए 🎙 बटन दबाएं, या सीधे यहां टाइप करें।"
+
+msgid "Detected"
+msgstr "पता चला"
+
+msgid "Analysis confidence"
+msgstr "विश्लेषण आत्मविश्वास"
+
+msgid "Treatment Advisory"
+msgstr "उपचार सलाह"
+
+msgid "Listen to Advisory"
+msgstr "सलाह सुनें"
+
+msgid "Want to save this scan?"
+msgstr "क्या आप इस स्कैन को सहेजना चाहते हैं?"
+
+msgid ""
+"Create a free account to store your history, get voice advisories in "
+"Marathi, and get flagged cases reviewed by a government expert."
+msgstr ""
+"अपने इतिहास को सहेजने और सरकारी विशेषज्ञ से जांच कराने के लिए निःशुल्क खाता "
+"बनाएं।"
+
+msgid "Create Account"
+msgstr "खाता बनाएं"
+
+msgid "Scan Another Crop"
+msgstr "दूसरी फसल स्कैन करें"
+
+msgid "Add New Farm"
+msgstr "नया खेत जोड़ें"
+
+msgid "Register a new farm to keep track of its crop health."
+msgstr "फसल के स्वास्थ्य पर नज़र रखने के लिए एक नया खेत पंजीकृत करें।"
+
+msgid "Farm Name"
+msgstr "खेत का नाम"
+
+msgid "e.g. Tomato Field"
+msgstr "उदा. टमाटर का खेत"
+
+msgid "Area (Acres)"
+msgstr "क्षेत्र (एकड़)"
+
+msgid "District"
+msgstr "ज़िला"
+
+msgid "Select"
+msgstr "चुनें"
+
+msgid "Taluka"
+msgstr "तालुका"
+
+msgid "Village"
+msgstr "गाँव"
+
+msgid "Current Crop"
+msgstr "वर्तमान फसल"
+
+msgid "Save Farm"
+msgstr "खेत सहेजें"
+
+msgid "Cancel"
+msgstr "रद्द करें"
+
+msgid "Add"
+msgstr "जोड़ें"
+
+msgid "Welcome"
+msgstr "स्वागत है"
+
+msgid "My Farms"
+msgstr "मेरे खेत"
+
+msgid "Acres"
+msgstr "एकड़"
+
+msgid "No farms registered."
+msgstr "कोई खेत पंजीकृत नहीं है।"
+
+msgid "How it works"
+msgstr "यह कैसे काम करता है"
+
+msgid "Upload a crop photo"
+msgstr "फसल की फोटो अपलोड करें"
+
+msgid "AI detects diseases"
+msgstr "AI रोगों का पता लगाता है"
+
+msgid "Risk scored via Weather & Pests"
+msgstr "मौसम और कीटों के माध्यम से जोखिम स्कोर"
+
+msgid "Get actionable management advice"
+msgstr "कार्रवाई योग्य प्रबंधन सलाह प्राप्त करें"
+
+msgid "Recent Scans"
+msgstr "हाल के स्कैन"
+
+msgid "View All"
+msgstr "सभी देखें"
+
+msgid "Crop"
+msgstr "फसल"
+
+msgid "No crop scans yet"
+msgstr "अभी तक कोई फसल स्कैन नहीं"
+
+msgid "Upload a photo of your crop to check its health."
+msgstr "अपनी फसल के स्वास्थ्य की जांच के लिए फोटो अपलोड करें।"
+
+msgid "Scan your first crop"
+msgstr "अपनी पहली फसल स्कैन करें"
+
+msgid "You don't have a farm registered yet."
+msgstr "आपका कोई खेत अभी तक पंजीकृत नहीं है।"
+
+msgid "Add a farm"
+msgstr "खेत जोड़ें"
+
+msgid "to get started."
+msgstr "शुरू करने के लिए।"

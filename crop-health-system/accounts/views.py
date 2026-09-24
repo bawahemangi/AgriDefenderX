@@ -139,6 +139,46 @@ def logout_view(request):
     logout(request)
     return redirect("accounts:login")
 
+@login_required
+def add_farm(request):
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        area_acres = request.POST.get("area_acres", "").strip()
+        district = request.POST.get("district", "").strip()
+        taluka = request.POST.get("taluka", "").strip()
+        village = request.POST.get("village", "").strip()
+        crop = request.POST.get("crop", "").strip()
+
+        if name and district and area_acres:
+            lat, lng = 19.5, 75.5 # default
+            if district == "Pune": lat, lng = 18.5204, 73.8567
+            elif district == "Nashik": lat, lng = 19.9975, 73.7898
+
+            farm = Farm.objects.create(
+                owner=request.user,
+                name=name,
+                area_acres=float(area_acres),
+                district=district,
+                taluka=taluka,
+                village=village,
+                latitude=lat,
+                longitude=lng
+            )
+            if crop:
+                import datetime
+                CropCycle.objects.create(
+                    farm=farm,
+                    crop=crop,
+                    sowing_date=datetime.date.today(),
+                    growth_stage=CropCycle.GrowthStage.VEGETATIVE,
+                )
+            return redirect("accounts:farmer_home")
+            
+    return render(request, "accounts/add_farm.html", {
+        "districts": MAHARASHTRA_DISTRICTS,
+        "crops": CROPS,
+    })
+
 
 @login_required
 def farmer_home(request):

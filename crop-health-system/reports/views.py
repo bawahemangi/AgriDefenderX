@@ -81,7 +81,8 @@ def upload_report(request):
             latitude=lat,
             longitude=lng,
         )
-        process_disease_report(report)
+        session_lang = request.session.get("_language", getattr(request, "LANGUAGE_CODE", "en"))
+        process_disease_report(report, language=session_lang)
         return redirect("reports:report_detail", pk=report.pk)
 
     return render(request, "farmer/upload.html", {"farms": farms})
