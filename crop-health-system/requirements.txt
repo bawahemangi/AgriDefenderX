@@ -3,6 +3,8 @@ Django>=5.0,<6.0
 djangorestframework>=3.15
 Pillow>=10.0
 requests>=2.31
+gTTS>=2.3
+deep-translator>=1.11.4
 
 # --- ML: risk model (structured data) ---
 xgboost>=2.0

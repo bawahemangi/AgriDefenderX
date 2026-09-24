@@ -101,6 +101,29 @@ def process_disease_report(report: DiseaseReport) -> DiseaseReport:
     report.advisory_sources = advisory.sources
     report.advisory_mode = advisory.generation_mode
 
+    # -- 5b. Generate Audio --
+    if report.advisory_text:
+        try:
+            from gtts import gTTS
+            from django.core.files.base import ContentFile
+            import tempfile
+            import os
+            import uuid
+
+            tts = gTTS(text=report.advisory_text, lang=report.advisory_language)
+            
+            fd, temp_path = tempfile.mkstemp(suffix=".mp3")
+            os.close(fd)
+            tts.save(temp_path)
+            
+            with open(temp_path, "rb") as f:
+                filename = f"advisory_{uuid.uuid4().hex[:8]}_{report.advisory_language}.mp3"
+                report.advisory_audio.save(filename, ContentFile(f.read()), save=False)
+                
+            os.remove(temp_path)
+        except Exception as e:
+            print(f"Audio generation failed: {e}")
+
     # -- 6. Routing --
     if report.is_low_confidence or report.risk_band == "HIGH":
         report.status = DiseaseReport.Status.FLAGGED_FOR_REVIEW

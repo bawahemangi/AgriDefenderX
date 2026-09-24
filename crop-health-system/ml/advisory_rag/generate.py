@@ -140,6 +140,20 @@ def _llm_polish_and_translate(advisory: Advisory, language: str, crop: str, grow
     return advisory
 
 
+def _translate_fallback(advisory: Advisory, language: str) -> Advisory:
+    try:
+        from deep_translator import GoogleTranslator
+        translator = GoogleTranslator(source='en', target=language)
+        result = translator.translate(advisory.text)
+        if result:
+            advisory.text = result
+            advisory.language = language
+            advisory.generation_mode = "deep_translated"
+    except Exception as e:
+        print(f"Translation fallback failed: {e}")
+    return advisory
+
+
 def generate_advisory(
     crop: str,
     disease: str,
@@ -181,6 +195,9 @@ def generate_advisory(
     if language != "en":
         advisory = _llm_polish_and_translate(advisory, language, crop, growth_stage)
         if advisory.generation_mode != "llm_grounded":
+            advisory = _translate_fallback(advisory, language)
+        
+        if advisory.language != language:
             advisory.text += (
                 f"\n\n[{SUPPORTED_LANGUAGES.get(language, language)} translation "
                 f"unavailable -- set ANTHROPIC_API_KEY to enable live translation. "

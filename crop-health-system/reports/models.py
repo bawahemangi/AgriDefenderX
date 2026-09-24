@@ -70,6 +70,7 @@ class DiseaseReport(models.Model):
     # -- Advisory (RAG) output --
     advisory_text = models.TextField(blank=True)
     advisory_language = models.CharField(max_length=8, default="en")
+    advisory_audio = models.FileField(upload_to="advisory_audio/%Y/%m/", blank=True, null=True)
     advisory_sources = models.JSONField(default=list, blank=True)
     advisory_mode = models.CharField(max_length=30, blank=True)
 
