@@ -161,8 +161,17 @@
 
 <script>
 const map = L.map('hotspot-map').setView([19.5, 75.5], 6.4);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors', maxZoom: 18,
+
+// Satellite Imagery base layer
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, and the GIS User Community',
+  maxZoom: 18,
+}).addTo(map);
+
+// Boundaries and Places labels layer
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+  attribution: 'Reference &copy; Esri',
+  maxZoom: 18,
 }).addTo(map);
 
 // Fix leaflet rendering when initialized in a hidden or complex layout
@@ -190,10 +199,12 @@ fetch("{% url 'dashboard:hotspot_geojson' %}?days={{ filters.days }}")
       const [lng, lat] = f.geometry.coordinates;
       const p = f.properties;
       const farmerName = p.farmer || "Unknown Farmer";
+      const farmName = p.farm || farmerName;
       L.circleMarker([lat, lng], {
         radius: 6, color: riskColors[p.risk_band] || '#666',
         fillColor: riskColors[p.risk_band] || '#666', fillOpacity: 0.75, weight: 1,
       }).bindPopup(`<strong>${p.disease}</strong><br>${p.crop} · ${p.district}<br>👨‍🌾 ${farmerName}<br>Risk: ${p.risk_band}<br>${p.created_at}`)
+        .bindTooltip(farmName, { permanent: true, direction: 'right', className: 'text-xs font-semibold bg-white/90 border-0 rounded px-1.5 py-0.5 shadow-sm' })
         .addTo(map);
     });
     (data.hotspot_clusters || []).forEach(c => {
