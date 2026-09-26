@@ -7,7 +7,7 @@ gTTS>=2.3
 deep-translator>=1.11.4
 
 # --- ML: risk model (structured data) ---
-xgboost>=2.0
+xgboost-cpu>=2.0
 scikit-learn>=1.4
 pandas>=2.0
 numpy>=1.26
