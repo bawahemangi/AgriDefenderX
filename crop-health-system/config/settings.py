@@ -33,7 +33,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "accounts",
     "farms",
-    "reports",
+    "reports.apps.ReportsConfig",
     "dashboard",
 ]
 

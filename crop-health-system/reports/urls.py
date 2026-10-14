@@ -15,6 +15,7 @@ urlpatterns = [
     # Public (no login required)
     path("scan/", scan_views.scan_page, name="scan_page"),
     path("scan/analyse/", scan_views.analyse_image, name="scan_analyse"),
+    path("scan/audio/<str:scan_id>/", scan_views.audio_status, name="scan_audio_status"),
     # Farmer authenticated views
     path("farmer/upload/", views.upload_report, name="upload_report"),
     path("farmer/reports/", views.report_list, name="report_list"),

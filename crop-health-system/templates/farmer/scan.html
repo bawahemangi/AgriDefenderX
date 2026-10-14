@@ -450,6 +450,15 @@
           <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/></svg>
           🎧 {% trans "Listen to Advisory" %}
         </p>
+        <!-- Loading skeleton shown while TTS runs in background -->
+        <div id="audio-loading" style="display:none; align-items:center; gap:0.5rem;" class="text-xs text-slate-400 py-2">
+          <span class="inline-flex gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:0s"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:.15s"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-300 animate-bounce" style="animation-delay:.3s"></span>
+          </span>
+          Preparing audio advisory…
+        </div>
         <audio id="advisory-audio" controls class="w-full h-10">
           <source id="advisory-audio-src" src="" type="audio/mpeg">
         </audio>
@@ -693,11 +702,18 @@ function showResults(data) {
       src.style.display = 'block';
     }
 
-    // Audio
+    // Audio — may arrive now (direct) or via background poll
+    const audioBlock = document.getElementById('audio-block');
     if (data.audio_url) {
       document.getElementById('advisory-audio-src').src = data.audio_url;
       document.getElementById('advisory-audio').load();
-      document.getElementById('audio-block').style.display = 'block';
+      audioBlock.style.display = 'block';
+    } else if (data.scan_id) {
+      // TTS is running in background — show skeleton and start polling
+      audioBlock.style.display = 'block';
+      document.getElementById('audio-loading').style.display = 'flex';
+      document.getElementById('advisory-audio').style.display = 'none';
+      pollAudio(data.scan_id, data.audio_poll_lang || data.language || 'en');
     }
   }
 
@@ -800,6 +816,7 @@ function renderEconomics(econ) {
 ──────────────────────────────────────────────── */
 function resetScan() {
   selectedFile = null;
+  stopAudioPoll();
   document.getElementById('results-panel').style.display = 'none';
   document.getElementById('preview-img').style.display = 'none';
   document.getElementById('drop-placeholder').style.display = 'block';
@@ -814,6 +831,40 @@ function resetScan() {
   document.getElementById('res-risk-badge').style.display = 'none';
   document.getElementById('econ-card').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ────────────────────────────────────────────────
+   Audio polling (waits for background TTS to complete)
+──────────────────────────────────────────────── */
+let _audioPollTimer = null;
+
+function pollAudio(scanId, lang, attempts = 0) {
+  const MAX_ATTEMPTS = 15; // 30 s max
+  if (attempts >= MAX_ATTEMPTS) {
+    document.getElementById('audio-loading').style.display = 'none';
+    return;
+  }
+  _audioPollTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`/scan/audio/${scanId}/?lang=${lang}`);
+      const d = await r.json();
+      if (d.ready && d.audio_url) {
+        document.getElementById('audio-loading').style.display = 'none';
+        const audio = document.getElementById('advisory-audio');
+        document.getElementById('advisory-audio-src').src = d.audio_url;
+        audio.load();
+        audio.style.display = 'block';
+      } else {
+        pollAudio(scanId, lang, attempts + 1);
+      }
+    } catch (_) {
+      pollAudio(scanId, lang, attempts + 1);
+    }
+  }, 2000);
+}
+
+function stopAudioPoll() {
+  if (_audioPollTimer) { clearTimeout(_audioPollTimer); _audioPollTimer = null; }
 }
 
 /* ────────────────────────────────────────────────
