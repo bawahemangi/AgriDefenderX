@@ -31,3 +31,10 @@ huggingface_hub>=0.23
 
 # --- Production database (optional, SQLite is the default) ---
 psycopg2-binary>=2.9  # only needed if you set POSTGRES_DB env vars
+
+# --- Economic Decision Intelligence engine ---
+# ml/economic_engine/calculate.py is pure Python (stdlib only) — no extra
+# pip package needed. It uses MSP/APMC crop price tables and KVK cost data
+# to compute expected yield, treatment cost, recovery potential, and ROI,
+# then issues a TREAT / ACCEPT_LOSS / MONITOR verdict for each scan.
+

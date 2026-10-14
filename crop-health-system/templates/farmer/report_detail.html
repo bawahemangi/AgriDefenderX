@@ -157,6 +157,120 @@
 
     </div>
   </div>
+  <!-- Economic Decision Intelligence -->
+  {% if report.econ_verdict %}
+  <div class="card overflow-hidden mt-6"
+       style="border: 1.5px solid {% if report.econ_verdict == 'TREAT' %}#16a34a{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#dc2626{% else %}#d97706{% endif %};">
+
+    <!-- Header bar -->
+    <div class="p-5 pb-4"
+         style="background: {% if report.econ_verdict == 'TREAT' %}linear-gradient(135deg,#f0fdf4,#dcfce7){% elif report.econ_verdict == 'ACCEPT_LOSS' %}linear-gradient(135deg,#fff1f2,#ffe4e6){% else %}linear-gradient(135deg,#fffbeb,#fef3c7){% endif %};">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-bold"
+               style="background: {% if report.econ_verdict == 'TREAT' %}#16a34a{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#dc2626{% else %}#d97706{% endif %};">
+            {% if report.econ_verdict == 'TREAT' %}✔{% elif report.econ_verdict == 'ACCEPT_LOSS' %}✕{% else %}◎{% endif %}
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest"
+               style="color: {% if report.econ_verdict == 'TREAT' %}#166534{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#991b1b{% else %}#92400e{% endif %};">
+              💰 Economic Decision Intelligence
+            </p>
+            <h2 class="font-serif text-xl font-bold"
+                style="color: {% if report.econ_verdict == 'TREAT' %}#15803d{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#b91c1c{% else %}#b45309{% endif %};">
+              {% if report.econ_verdict == 'TREAT' %}Intervention Recommended
+              {% elif report.econ_verdict == 'ACCEPT_LOSS' %}Accept the Loss — Skip Treatment
+              {% else %}Monitor Before Deciding{% endif %}
+            </h2>
+          </div>
+        </div>
+        {% if report.econ_roi_pct != None %}
+        <div class="text-right shrink-0">
+          <p class="text-2xl font-bold"
+             style="color: {% if report.econ_verdict == 'TREAT' %}#16a34a{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#dc2626{% else %}#d97706{% endif %};">{{ report.econ_roi_pct|floatformat:0 }}%</p>
+          <p class="text-xs text-[var(--ink-soft)]">ROI on treatment</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Cost-Benefit Waterfall -->
+    <div class="p-5">
+      <p class="text-xs font-semibold uppercase tracking-wide text-[var(--ink-soft)] mb-4">
+        Financial Breakdown · {{ report.farm.area_acres|floatformat:1 }} acre{{ report.farm.area_acres|floatformat:1|pluralize }}
+      </p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+
+        <!-- Expected Yield -->
+        <div class="rounded-xl p-3 text-center" style="background:#f8fafc; border:1px solid #e2e8f0;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Expected Yield</p>
+          <p class="text-xl font-bold text-slate-700">₹{{ report.econ_expected_yield_value|floatformat:0 }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">Healthy crop value</p>
+        </div>
+
+        <!-- Current Loss -->
+        <div class="rounded-xl p-3 text-center" style="background:#fff1f2; border:1px solid #fecdd3;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-rose-400 mb-1">Current Loss</p>
+          <p class="text-xl font-bold text-rose-600">₹{{ report.econ_current_loss_value|floatformat:0 }}</p>
+          <p class="text-[10px] text-rose-300 mt-0.5">Damage so far</p>
+        </div>
+
+        <!-- Treatment Cost -->
+        <div class="rounded-xl p-3 text-center" style="background:#fffbeb; border:1px solid #fde68a;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-amber-500 mb-1">Treatment Cost</p>
+          <p class="text-xl font-bold text-amber-600">₹{{ report.econ_treatment_cost|floatformat:0 }}</p>
+          <p class="text-[10px] text-amber-300 mt-0.5">One spray round</p>
+        </div>
+
+        <!-- Expected Recovery -->
+        <div class="rounded-xl p-3 text-center" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-green-500 mb-1">Recovery Potential</p>
+          <p class="text-xl font-bold text-green-600">₹{{ report.econ_expected_recovery|floatformat:0 }}</p>
+          <p class="text-[10px] text-green-300 mt-0.5">After treatment</p>
+        </div>
+      </div>
+
+      <!-- Net Benefit Bar -->
+      {% if report.econ_net_benefit != None %}
+      <div class="rounded-xl p-4 mb-4"
+           style="background: {% if report.econ_net_benefit > 0 %}#f0fdf4{% else %}#fff1f2{% endif %}; border: 1px solid {% if report.econ_net_benefit > 0 %}#bbf7d0{% else %}#fecdd3{% endif %};">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-[var(--ink-soft)] font-medium">Net Benefit of Treatment</p>
+            <p class="text-2xl font-bold mt-0.5"
+               style="color: {% if report.econ_net_benefit > 0 %}#16a34a{% else %}#dc2626{% endif %}">
+              {% if report.econ_net_benefit > 0 %}+{% endif %}₹{{ report.econ_net_benefit|floatformat:0 }}
+            </p>
+          </div>
+          <div class="text-3xl">
+            {% if report.econ_net_benefit > 0 %}📈{% else %}📉{% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Rationale -->
+      {% if report.econ_rationale %}
+      <div class="flex gap-3 rounded-xl p-4"
+           style="background: {% if report.econ_verdict == 'TREAT' %}#f0fdf4{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#fff1f2{% else %}#fffbeb{% endif %};">
+        <span class="text-xl shrink-0 mt-0.5">
+          {% if report.econ_verdict == 'TREAT' %}💡{% elif report.econ_verdict == 'ACCEPT_LOSS' %}⚠️{% else %}🔭{% endif %}
+        </span>
+        <p class="text-sm leading-relaxed"
+           style="color: {% if report.econ_verdict == 'TREAT' %}#166534{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#991b1b{% else %}#92400e{% endif %}">
+          <strong>Decision Support:</strong> {{ report.econ_rationale }}
+        </p>
+      </div>
+      {% endif %}
+
+      <p class="text-[10px] text-[var(--ink-soft)] mt-4">
+        ⚡ Estimates based on MSP/APMC prices & KVK field data for {{ report.crop_detected }}.
+        Actual costs vary by region and input supplier. Consult your local KVK for precise figures.
+      </p>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 {% endblock %}

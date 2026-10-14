@@ -240,6 +240,81 @@
     0%,100% { transform: scaleY(0.5); }
     50% { transform: scaleY(1); }
   }
+  /* ── Economic Decision Card ─────────────────────────────────────── */
+  .econ-card {
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .econ-header {
+    padding: 1.25rem 1.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .econ-verdict-icon {
+    width: 2.75rem; height: 2.75rem;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: 700; color: white;
+    flex-shrink: 0;
+  }
+  .econ-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+    padding: 0 1.25rem 1.25rem;
+  }
+  .econ-cell {
+    border-radius: 14px;
+    padding: 0.75rem;
+    text-align: center;
+  }
+  .econ-cell-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 0.25rem;
+  }
+  .econ-cell-value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .econ-cell-sub {
+    font-size: 9px;
+    margin-top: 0.2rem;
+    opacity: 0.65;
+  }
+  .econ-net {
+    margin: 0 1.25rem 1rem;
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .econ-rationale {
+    margin: 0 1.25rem 1.25rem;
+    border-radius: 14px;
+    padding: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+  .econ-disclaimer {
+    font-size: 9px;
+    color: var(--ink-soft);
+    padding: 0 1.25rem 1rem;
+    opacity: 0.7;
+  }
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .econ-cell-value { animation: count-up 0.5s ease forwards; }
 </style>
 {% endblock %}
 
@@ -383,6 +458,10 @@
       <div id="advisory-text" class="text-sm leading-relaxed text-[var(--ink)]"></div>
 
       <div id="advisory-source" class="text-xs text-[var(--ink-soft)] mt-4 pt-3 border-t border-[var(--line)]" style="display:none"></div>
+    </div>
+
+    <!-- Economic Decision Card -->
+    <div class="econ-card" id="econ-card" style="display:none; border:1.5px solid #d1d5db;">
     </div>
 
     <!-- Save Prompt (guests only) -->
@@ -622,12 +701,98 @@ function showResults(data) {
     }
   }
 
+  // Economics card
+  renderEconomics(data.economics);
+
   // Save prompt for guests
   const savePrompt = document.getElementById('save-prompt');
   if (savePrompt) savePrompt.style.display = 'block';
 
   // Reset scan button
   document.getElementById('scan-label').textContent = 'Scan Crop';
+}
+
+/* ────────────────────────────────────────────────
+   Render Economics
+──────────────────────────────────────────────── */
+function renderEconomics(econ) {
+  const card = document.getElementById('econ-card');
+  if (!econ || econ.verdict === undefined) { card.style.display = 'none'; return; }
+
+  const v = econ.verdict;
+  const color   = v === 'TREAT' ? '#16a34a' : v === 'ACCEPT_LOSS' ? '#dc2626' : '#d97706';
+  const bgLight = v === 'TREAT' ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)'
+                : v === 'ACCEPT_LOSS' ? 'linear-gradient(135deg,#fff1f2,#ffe4e6)'
+                : 'linear-gradient(135deg,#fffbeb,#fef3c7)';
+  const bgCell  = v === 'TREAT' ? '#f0fdf4' : v === 'ACCEPT_LOSS' ? '#fff1f2' : '#fffbeb';
+  const icon    = v === 'TREAT' ? '✔' : v === 'ACCEPT_LOSS' ? '✕' : '◎';
+  const title   = v === 'TREAT' ? 'Intervention Recommended'
+                : v === 'ACCEPT_LOSS' ? 'Accept the Loss'
+                : 'Monitor Before Deciding';
+  const ratIcon = v === 'TREAT' ? '💡' : v === 'ACCEPT_LOSS' ? '⚠️' : '🔭';
+
+  const fmt = (n) => '₹' + Math.round(n).toLocaleString('en-IN');
+
+  card.style.border = `1.5px solid ${color}`;
+  card.innerHTML = `
+    <div class="econ-header" style="background:${bgLight}">
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <div class="econ-verdict-icon" style="background:${color}">${icon}</div>
+        <div>
+          <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${color};margin-bottom:2px">💰 Economic Decision Intelligence</p>
+          <p style="font-weight:700;font-size:1.05rem;color:${color}">${title}</p>
+        </div>
+      </div>
+      ${econ.roi_pct != null ? `<div style="text-align:right;flex-shrink:0">
+        <p style="font-size:1.6rem;font-weight:800;color:${color};line-height:1">${Math.round(econ.roi_pct)}%</p>
+        <p style="font-size:10px;color:#94a3b8">ROI on treatment</p>
+      </div>` : ''}
+    </div>
+
+    <div class="econ-grid">
+      <div class="econ-cell" style="background:#f8fafc;border:1px solid #e2e8f0">
+        <div class="econ-cell-label" style="color:#94a3b8">Expected Yield</div>
+        <div class="econ-cell-value" style="color:#334155">${fmt(econ.expected_yield_value)}</div>
+        <div class="econ-cell-sub" style="color:#94a3b8">Healthy crop value</div>
+      </div>
+      <div class="econ-cell" style="background:#fff1f2;border:1px solid #fecdd3">
+        <div class="econ-cell-label" style="color:#f87171">Current Loss</div>
+        <div class="econ-cell-value" style="color:#dc2626">${fmt(econ.current_loss_value)}</div>
+        <div class="econ-cell-sub" style="color:#fca5a5">Damage so far</div>
+      </div>
+      <div class="econ-cell" style="background:#fffbeb;border:1px solid #fde68a">
+        <div class="econ-cell-label" style="color:#fbbf24">Treatment Cost</div>
+        <div class="econ-cell-value" style="color:#d97706">${fmt(econ.treatment_cost)}</div>
+        <div class="econ-cell-sub" style="color:#fcd34d">One spray round (1 ac)</div>
+      </div>
+      <div class="econ-cell" style="background:#f0fdf4;border:1px solid #bbf7d0">
+        <div class="econ-cell-label" style="color:#4ade80">Recovery Potential</div>
+        <div class="econ-cell-value" style="color:#16a34a">${fmt(econ.expected_recovery)}</div>
+        <div class="econ-cell-sub" style="color:#86efac">After treatment</div>
+      </div>
+    </div>
+
+    <div class="econ-net"
+         style="background:${econ.net_benefit>0?'#f0fdf4':'#fff1f2'};border:1px solid ${econ.net_benefit>0?'#bbf7d0':'#fecdd3'}">
+      <div>
+        <p style="font-size:11px;color:#64748b;font-weight:600">Net Benefit of Treatment</p>
+        <p style="font-size:1.6rem;font-weight:800;color:${econ.net_benefit>0?'#16a34a':'#dc2626'};line-height:1.2">
+          ${econ.net_benefit>0?'+':''}${fmt(econ.net_benefit)}
+        </p>
+      </div>
+      <span style="font-size:2rem">${econ.net_benefit>0?'📈':'📉'}</span>
+    </div>
+
+    <div class="econ-rationale" style="background:${bgCell}">
+      <span style="font-size:1.2rem;flex-shrink:0;margin-top:2px">${ratIcon}</span>
+      <p style="font-size:0.82rem;line-height:1.65;color:${color}">
+        <strong>Decision Support:</strong> ${econ.rationale}
+      </p>
+    </div>
+
+    <p class="econ-disclaimer">⚡ Estimates based on MSP/APMC prices & KVK field data. Actual costs vary by region.</p>
+  `;
+  card.style.display = 'block';
 }
 
 /* ────────────────────────────────────────────────
@@ -647,6 +812,7 @@ function resetScan() {
   document.getElementById('advisory-card').style.display = 'none';
   document.getElementById('audio-block').style.display = 'none';
   document.getElementById('res-risk-badge').style.display = 'none';
+  document.getElementById('econ-card').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

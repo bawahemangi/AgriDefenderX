@@ -74,6 +74,17 @@ class DiseaseReport(models.Model):
     advisory_sources = models.JSONField(default=list, blank=True)
     advisory_mode = models.CharField(max_length=30, blank=True)
 
+    # -- Economic Decision Intelligence output --
+    econ_expected_yield_value = models.FloatField(null=True, blank=True, help_text="Full healthy-crop value (₹)")
+    econ_current_loss_value   = models.FloatField(null=True, blank=True, help_text="Value already lost to disease (₹)")
+    econ_treatment_cost       = models.FloatField(null=True, blank=True, help_text="Estimated treatment cost (₹)")
+    econ_expected_recovery    = models.FloatField(null=True, blank=True, help_text="Value recoverable after treatment (₹)")
+    econ_net_benefit          = models.FloatField(null=True, blank=True, help_text="Net benefit of treating (₹)")
+    econ_roi_pct              = models.FloatField(null=True, blank=True, help_text="Return on treatment investment (%)")
+    econ_verdict              = models.CharField(max_length=20, blank=True,
+                                                  help_text="'TREAT' | 'ACCEPT_LOSS' | 'MONITOR'")
+    econ_rationale            = models.TextField(blank=True, help_text="Human-readable economic rationale")
+
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

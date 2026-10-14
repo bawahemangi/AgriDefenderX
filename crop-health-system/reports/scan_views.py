@@ -21,7 +21,7 @@ from django.conf import settings
 
 # Make ml subpackages importable (same pattern as reports/services.py)
 BASE_DIR = Path(__file__).resolve().parent.parent
-for sub in ("disease_classifier", "risk_model", "advisory_rag"):
+for sub in ("disease_classifier", "risk_model", "advisory_rag", "economic_engine"):
     p = str(BASE_DIR / "ml" / sub)
     if p not in sys.path:
         sys.path.insert(0, p)
@@ -125,7 +125,23 @@ def analyse_image(request):
     except Exception as e:
         print(f"Guest TTS failed: {e}")
 
-    # ── 7. Build response ───────────────────────────────────────────────
+    # ── 7. Economic Decision Intelligence ───────────────────────────────
+    econ_data = None
+    try:
+        from calculate import calculate_economics
+        econ = calculate_economics(
+            crop=crop,
+            disease=disease,
+            risk_band=risk_band,
+            area_acres=1.0,   # guest scan default — 1 acre
+            confidence=confidence,
+            is_healthy=is_healthy,
+        )
+        econ_data = econ.to_dict()
+    except Exception as e:
+        print(f"Guest economic engine failed: {e}")
+
+    # ── 8. Build response ───────────────────────────────────────────────
     payload = {
         "disease":         disease,
         "crop":            crop,
@@ -138,5 +154,6 @@ def analyse_image(request):
         "advisory_source": ", ".join(advisory.sources) if advisory.sources else None,
         "audio_url":       audio_url,
         "language":        advisory.language,
+        "economics":       econ_data,
     }
     return JsonResponse(payload)

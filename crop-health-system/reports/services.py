@@ -31,7 +31,7 @@ from .weather import get_or_fetch_weather
 # ml/ lives as a sibling of the Django project root, not inside any app --
 # make its subpackages importable.
 BASE_DIR = Path(__file__).resolve().parent.parent
-for sub in ("disease_classifier", "risk_model", "advisory_rag"):
+for sub in ("disease_classifier", "risk_model", "advisory_rag", "economic_engine"):
     path = str(BASE_DIR / "ml" / sub)
     if path not in sys.path:
         sys.path.insert(0, path)
@@ -131,6 +131,30 @@ def process_disease_report(report: DiseaseReport, language: str = None) -> Disea
         report.status = DiseaseReport.Status.FLAGGED_FOR_REVIEW
     else:
         report.status = DiseaseReport.Status.ADVISORY_SENT
+
+    # -- 7. Economic Decision Intelligence --
+    try:
+        from calculate import calculate_economics  # ml/economic_engine/calculate.py
+
+        area_acres = report.farm.area_acres if report.farm.area_acres else 1.0
+        econ = calculate_economics(
+            crop=result["crop"],
+            disease=result["disease"],
+            risk_band=risk["risk_band"],
+            area_acres=area_acres,
+            confidence=result["confidence"],
+            is_healthy=is_healthy_prediction,
+        )
+        report.econ_expected_yield_value = econ.expected_yield_value
+        report.econ_current_loss_value   = econ.current_loss_value
+        report.econ_treatment_cost       = econ.treatment_cost
+        report.econ_expected_recovery    = econ.expected_recovery
+        report.econ_net_benefit          = econ.net_benefit
+        report.econ_roi_pct              = econ.roi_pct
+        report.econ_verdict              = econ.verdict
+        report.econ_rationale            = econ.rationale
+    except Exception as e:
+        print(f"Economic engine failed: {e}")
 
     report.save()
     return report
