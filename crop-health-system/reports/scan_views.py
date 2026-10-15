@@ -2,30 +2,30 @@
 Guest scan view — runs the full ML pipeline (image classify + risk + advisory)
 without requiring the user to be logged in or have a farm record.
 
-Performance optimisations applied here
----------------------------------------
-1. STEPS 3 / 4 / 7 RUN IN PARALLEL
-   Risk scoring, advisory generation, and the economic engine are all
-   independent of each other (they only need the classifier output).
-   We fire them concurrently via ThreadPoolExecutor and await all three
-   together — cutting ~300 ms of sequential I/O to ~100 ms.
+Performance optimisations
+--------------------------
+1. PARALLEL risk + economics
+   Risk scoring and economic engine run concurrently via ThreadPoolExecutor.
 
-2. TTS IS FIRE-AND-FORGET (async)
-   Google TTS requires a round-trip HTTP call that can take 2–5 s.
-   Instead of blocking the main response we:
-     a) Return the scan result immediately with audio_url=null.
-     b) Kick off a daemon thread to run gTTS and save the file.
-     c) The file is saved under a predictable path keyed by a uuid
-        (scan_<id>_<lang>.mp3) in media/guest_audio/.
-     d) The frontend polls GET /scan/audio/<scan_id>/ every 2 s until
-        the file exists, then injects the <audio> player.
+2. FIRE-AND-FORGET TTS
+   gTTS is slow (2–5 s network call).  We return the scan result
+   immediately with audio_url=null and kick off a daemon thread.
+   Frontend polls GET /scan/audio/<scan_id>/ until the file exists.
 
-3. ADVISORY RESULT IS LRU-CACHED
-   The advisory RAG is deterministic for a given (crop, disease,
-   risk_band, language) tuple.  We cache up to 256 results in memory
-   so repeated disease patterns don't rebuild the text.
+3. FIRE-AND-FORGET TRANSLATION
+   MyMemory / Google Translate can take 5–25 s on a cold cache.
+   Strategy:
+     a) English advisory is returned INSTANTLY (pure template, 0 network calls).
+     b) If the user's language is non-English AND the translation was
+        previously cached → serve the translated version immediately.
+     c) If not cached → return English with translation_pending=true and
+        trigger a background daemon thread to translate.
+     d) Frontend polls GET /scan/translation/<scan_id>/ every 3 s until
+        the translation is ready, then swaps the advisory text in-place.
 
-This is the entry point for the public /scan/ page.
+4. IN-PROCESS CACHES
+   _cached_advisory_en   — English template results (LRU, maxsize=256)
+   generate._translation_cache — translated results (persists for process life)
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ import sys
 import tempfile
 import threading
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
 
@@ -55,9 +55,13 @@ for _sub in ("disease_classifier", "risk_model", "advisory_rag", "economic_engin
 # ── Shared thread-pool (reused across requests) ────────────────────────────
 _POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="scan-worker")
 
+# ── In-flight translation jobs: scan_id → {done, text, language, mode} ────
+_translation_jobs: dict[str, dict] = {}
+_translation_lock = threading.Lock()
+
 
 # ===========================================================================
-# Views
+# Public views
 # ===========================================================================
 
 def scan_page(request):
@@ -67,8 +71,8 @@ def scan_page(request):
 
 def audio_status(request, scan_id: str):
     """
-    Lightweight polling endpoint the frontend hits after receiving scan results.
-    Returns {"ready": true, "audio_url": "..."} once the TTS file exists.
+    Poll endpoint: returns {"ready": true, "audio_url": "..."} once gTTS
+    has finished writing the file.
     """
     lang = request.GET.get("lang", "en")
     filename = f"scan_{scan_id}_{lang}.mp3"
@@ -81,17 +85,37 @@ def audio_status(request, scan_id: str):
     return JsonResponse({"ready": False})
 
 
+def translation_status(request, scan_id: str):
+    """
+    Poll endpoint: returns {"ready": true, "advisory_text": "...",
+    "advisory_mode": "...", "language": "..."} once the background
+    translation thread has finished.
+    """
+    with _translation_lock:
+        job = _translation_jobs.get(scan_id)
+
+    if job and job.get("done"):
+        return JsonResponse({
+            "ready":         True,
+            "advisory_text": job["text"],
+            "advisory_mode": job["mode"],
+            "language":      job["language"],
+        })
+    return JsonResponse({"ready": False})
+
+
 @require_POST
 def analyse_image(request):
     """
     AJAX endpoint called by the scan page.
-    Accepts: image (file), language (str), voice_text (str, optional)
-    Returns: JSON with disease, crop, risk, advisory, economics.
-             audio_url is always null here; poll /scan/audio/<scan_id>/
-             to get it once the TTS finishes in the background.
+    Accepts : image (file), language (str), voice_text (str, optional)
+    Returns : JSON — disease, crop, risk, advisory (English or cached
+              translation), economics, scan_id.
+              audio_url is always null on return; poll /scan/audio/<id>/.
+              If translation is pending, translation_pending=true and
+              frontend polls /scan/translation/<id>/.
     """
     image_file = request.FILES.get("image")
-    # Language priority: POST param → Django session → 'en'
     session_lang = request.session.get("_language", request.LANGUAGE_CODE or "en")
     language = request.POST.get("language") or session_lang
     if language not in ("en", "mr", "hi"):
@@ -101,7 +125,7 @@ def analyse_image(request):
     if not image_file:
         return JsonResponse({"error": "No image provided."}, status=400)
 
-    # ── 1. Write upload to a temp file ──────────────────────────────────
+    # ── 1. Save upload to temp file ────────────────────────────────────
     suffix = Path(image_file.name).suffix or ".jpg"
     fd, tmp_path = tempfile.mkstemp(suffix=suffix)
     try:
@@ -110,10 +134,9 @@ def analyse_image(request):
             for chunk in image_file.chunks():
                 f.write(chunk)
 
-        # ── 2. Image classification (must finish before steps 3/4/7) ────
+        # ── 2. Image classification ────────────────────────────────────
         import infer as classifier_infer
         result = classifier_infer.classify_image(tmp_path)
-
     finally:
         try:
             os.remove(tmp_path)
@@ -125,10 +148,9 @@ def analyse_image(request):
     confidence      = result.get("confidence", 0.0)
     classifier_mode = result.get("mode", "")
     is_healthy      = "healthy" in result.get("predicted_class", "").lower()
+    low_conf        = confidence < getattr(settings, "LOW_CONFIDENCE_THRESHOLD", 0.20)
 
-    # ── 3 / 4 / 7: Run risk + advisory + economics IN PARALLEL ──────────
-    low_conf = confidence < getattr(settings, "LOW_CONFIDENCE_THRESHOLD", 0.20)
-
+    # ── 3. Risk model ──────────────────────────────────────────────────
     def _run_risk():
         import predict as risk_predict
         return risk_predict.predict_risk({
@@ -144,112 +166,152 @@ def analyse_image(request):
             "image_model_flagged_disease": 0 if is_healthy else 1,
         })
 
-    def _run_advisory(risk_band_val: str):
-        return _cached_advisory(crop, disease, risk_band_val, language, low_conf)
-
     def _run_economics(risk_band_val: str):
         try:
             from calculate import calculate_economics
             econ = calculate_economics(
-                crop=crop,
-                disease=disease,
-                risk_band=risk_band_val,
-                area_acres=1.0,
-                confidence=confidence,
-                is_healthy=is_healthy,
+                crop=crop, disease=disease, risk_band=risk_band_val,
+                area_acres=1.0, confidence=confidence, is_healthy=is_healthy,
             )
             return econ.to_dict()
         except Exception as exc:
-            print(f"Guest economic engine failed: {exc}")
+            print(f"[scan] Economic engine failed: {exc}")
             return None
 
-    # Step 3 must finish first so we have risk_band for steps 4 & 7
     risk_future = _POOL.submit(_run_risk)
-    risk = risk_future.result()               # wait — needed by the other two
-    risk_score = risk["risk_score"]
-    risk_band  = risk["risk_band"]
+    risk        = risk_future.result()
+    risk_score  = risk["risk_score"]
+    risk_band   = risk["risk_band"]
 
-    # Steps 4 and 7 can now run concurrently
-    advisory_future  = _POOL.submit(_run_advisory, risk_band)
-    economics_future = _POOL.submit(_run_economics, risk_band)
+    # Economics runs while we sort out advisory ─────────────────────────
+    econ_future = _POOL.submit(_run_economics, risk_band)
 
-    advisory  = advisory_future.result()
-    econ_data = economics_future.result()
+    # ── 4. Advisory — English always instant, translate async ──────────
+    scan_id = uuid.uuid4().hex[:12]
 
-    # ── 5. Append voice_text to advisory ────────────────────────────────
+    # Always fetch English template (fast — pure in-memory lookup)
+    en_advisory = _cached_advisory_en(crop, disease, risk_band, low_conf)
+    en_text     = en_advisory["text"]
+    sources     = en_advisory["sources"]
+    en_mode     = en_advisory["generation_mode"]
+
+    translation_pending = False
+    advisory_text       = en_text
+    advisory_language   = language if language == "en" else "en"  # start English
+    advisory_mode       = en_mode
+
+    if language != "en":
+        # Check if translation is already cached in generate._translation_cache
+        import generate as advisory_generate
+        cache_key = (en_text, language)
+        cached_tr = advisory_generate._translation_cache.get(cache_key)
+
+        if cached_tr:
+            # Warm cache hit — serve translated text immediately
+            advisory_text     = cached_tr["text"]
+            advisory_language = language
+            advisory_mode     = cached_tr["mode"]
+        else:
+            # Cold — serve English now, translate in background
+            translation_pending = True
+
+            def _translate_worker(sid: str, txt: str, lang: str, src_mode: str):
+                import generate as ag
+                from generate import Advisory, _translate_fallback
+                adv = Advisory(
+                    disease_title=disease, risk_band=risk_band,
+                    actions=[], safe_input_use="", referral_note="",
+                    sources=sources, language="en", text=txt,
+                    generation_mode=src_mode,
+                )
+                _translate_fallback(adv, lang)
+                with _translation_lock:
+                    _translation_jobs[sid] = {
+                        "done":     True,
+                        "text":     adv.text,
+                        "language": adv.language,
+                        "mode":     adv.generation_mode,
+                    }
+                print(f"[scan] Background translation done for {sid} "
+                      f"({adv.generation_mode}, lang={adv.language})")
+
+            with _translation_lock:
+                _translation_jobs[scan_id] = {"done": False}
+
+            threading.Thread(
+                target=_translate_worker,
+                args=(scan_id, en_text, language, en_mode),
+                daemon=True,
+                name=f"translate-{scan_id}",
+            ).start()
+
+    # Append voice note
     if voice_text:
-        advisory_text = advisory["text"] + f"\n\n---\n**Farmer's note:** {voice_text}"
-        advisory_language = advisory["language"]
-        advisory_mode     = advisory["generation_mode"]
-        advisory_sources  = advisory["sources"]
-    else:
-        advisory_text     = advisory["text"]
-        advisory_language = advisory["language"]
-        advisory_mode     = advisory["generation_mode"]
-        advisory_sources  = advisory["sources"]
+        advisory_text += f"\n\n---\n**Farmer's note:** {voice_text}"
 
-    # ── 6. Fire-and-forget TTS ──────────────────────────────────────────
-    scan_id   = uuid.uuid4().hex[:12]
-    audio_dir = Path(settings.MEDIA_ROOT) / "guest_audio"
+    # ── 5. Fire-and-forget TTS ─────────────────────────────────────────
+    # TTS lang: use target language if we already have translated text,
+    # otherwise 'en' for now (audio will update when frontend polls).
+    tts_lang      = advisory_language   # 'en' if pending, else target lang
+    audio_dir     = Path(settings.MEDIA_ROOT) / "guest_audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
-    audio_filename = f"scan_{scan_id}_{advisory_language}.mp3"
+    audio_filename = f"scan_{scan_id}_{tts_lang}.mp3"
     audio_path     = audio_dir / audio_filename
 
     def _tts_worker():
         try:
             from gtts import gTTS
-            tts = gTTS(text=advisory_text, lang=advisory_language)
-            tts.save(str(audio_path))
+            gTTS(text=advisory_text, lang=tts_lang).save(str(audio_path))
         except Exception as exc:
-            print(f"Guest TTS failed: {exc}")
+            print(f"[scan] TTS failed: {exc}")
 
-    threading.Thread(target=_tts_worker, daemon=True, name=f"tts-{scan_id}").start()
+    threading.Thread(target=_tts_worker, daemon=True,
+                     name=f"tts-{scan_id}").start()
 
-    # ── 7. Build response ────────────────────────────────────────────────
+    econ_data = econ_future.result()
+
+    # ── 6. Build response ──────────────────────────────────────────────
     payload = {
-        "disease":         disease,
-        "crop":            crop,
-        "confidence":      round(confidence, 4),
-        "classifier_mode": classifier_mode,
-        "risk_band":       risk_band,
-        "risk_score":      round(float(risk_score), 4),
-        "advisory_text":   advisory_text,
-        "advisory_mode":   advisory_mode,
-        "advisory_source": ", ".join(advisory_sources) if advisory_sources else None,
-        "language":        advisory_language,
-        "economics":       econ_data,
-        # audio starts as null; frontend polls /scan/audio/<scan_id>/
-        "audio_url":       None,
-        "scan_id":         scan_id,
-        "audio_poll_lang": advisory_language,
+        "disease":              disease,
+        "crop":                 crop,
+        "confidence":           round(confidence, 4),
+        "classifier_mode":      classifier_mode,
+        "risk_band":            risk_band,
+        "risk_score":           round(float(risk_score), 4),
+        "advisory_text":        advisory_text,
+        "advisory_mode":        advisory_mode,
+        "advisory_source":      ", ".join(sources) if sources else None,
+        "language":             advisory_language,
+        "economics":            econ_data,
+        "audio_url":            None,
+        "scan_id":              scan_id,
+        "audio_poll_lang":      tts_lang,
+        # translation polling
+        "translation_pending":  translation_pending,
+        "translation_target":   language if translation_pending else None,
     }
     return JsonResponse(payload)
 
 
 # ===========================================================================
-# LRU-cached advisory (deterministic for same inputs → cache hits)
+# Caches
 # ===========================================================================
 
 @lru_cache(maxsize=256)
-def _cached_advisory(crop: str, disease: str, risk_band: str,
-                     language: str, low_confidence: bool) -> dict:
+def _cached_advisory_en(crop: str, disease: str, risk_band: str,
+                         low_confidence: bool) -> dict:
     """
-    Wraps advisory_generate.generate_advisory() with an in-process LRU cache.
-    Converts the Advisory dataclass to a plain dict for JSON serialisation.
-    Returns a dict: {text, language, generation_mode, sources}
+    Returns the English advisory dict (template mode — zero network calls).
+    Cached per (crop, disease, risk_band, low_confidence).
     """
     import generate as advisory_generate
-    advisory = advisory_generate.generate_advisory(
-        crop=crop,
-        disease=disease,
-        growth_stage="",
-        risk_band=risk_band,
-        language=language,
-        low_confidence=low_confidence,
+    adv = advisory_generate.generate_advisory(
+        crop=crop, disease=disease, growth_stage="",
+        risk_band=risk_band, language="en", low_confidence=low_confidence,
     )
     return {
-        "text":            advisory.text,
-        "language":        advisory.language,
-        "generation_mode": advisory.generation_mode,
-        "sources":         advisory.sources,
+        "text":            adv.text,
+        "language":        adv.language,
+        "generation_mode": adv.generation_mode,
+        "sources":         adv.sources,
     }

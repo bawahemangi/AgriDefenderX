@@ -134,7 +134,7 @@ LOGIN_REDIRECT_URL = "/accounts/home/"
 
 # OpenWeatherMap API key. If unset, weather.services falls back to
 # season-representative synthetic weather so the pipeline still runs.
-OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY", "")
+OPENWEATHER_API_KEY = os.environ.get("0eb1912781aeb8803079cd1fde1d3423", "")
 
 # Anthropic API key, used only by ml/advisory_rag/generate.py for
 # translation + tone polishing of advisories that are already grounded in

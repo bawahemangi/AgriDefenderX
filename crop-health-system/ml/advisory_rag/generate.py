@@ -29,6 +29,10 @@ from retriever import RetrievedDoc, build_query, get_retriever
 
 SUPPORTED_LANGUAGES = {"en": "English", "mr": "Marathi", "hi": "Hindi"}
 
+# Module-level cache: (original_text, language) → translated_text.
+# Prevents re-hitting Google Translate for the same advisory text within a process.
+_translation_cache: dict[tuple[str, str], str] = {}
+
 
 @dataclass
 class Advisory:
@@ -141,17 +145,99 @@ def _llm_polish_and_translate(advisory: Advisory, language: str, crop: str, grow
 
 
 def _translate_fallback(advisory: Advisory, language: str) -> Advisory:
+    """
+    Translate advisory text using deep-translator.
+
+    Strategy (in order):
+      1. MyMemory (primary) — free, no per-second rate limit, no API key.
+         Text is split into ≤450-char sentence chunks and translated
+         sequentially (MyMemory serialises concurrent requests from the
+         same IP, so parallelism doesn't help here).
+      2. GoogleTranslator (backup) — free but rate-limited to 5 req/s;
+         uses translate_batch (one HTTP call for all chunks) with
+         exponential back-off.
+      Both share the module-level _translation_cache so the same advisory
+      text is never re-sent within a process lifetime.
+      NOTE: This function is called from a background daemon thread in
+      scan_views.py — callers should never block on it directly.
+    """
+    import time
+
+    _MYMEMORY_LANG = {"mr": "mr-IN", "hi": "hi-IN", "en": "en-US"}
+    _MM_CHUNK = 450   # MyMemory hard limit ~500 chars
+
+    cache_key = (advisory.text, language)
+    cached = _translation_cache.get(cache_key)
+    if cached is not None:
+        advisory.text, advisory.language = cached["text"], language
+        advisory.generation_mode = cached["mode"]
+        return advisory
+
+    def _split_sentences(text: str, limit: int) -> list[str]:
+        """Accumulate sentences into chunks of ≤limit chars."""
+        sentences, chunks, current = [], [], ""
+        for line in text.splitlines(keepends=True):
+            parts = line.replace(". ", ".|").replace("? ", "?|").replace("! ", "!|").split("|")
+            sentences.extend(parts)
+        for s in sentences:
+            if len(current) + len(s) > limit:
+                if current:
+                    chunks.append(current.rstrip())
+                current = s
+            else:
+                current += s
+        if current:
+            chunks.append(current.rstrip())
+        return chunks or [text]
+
+    translated_text: str | None = None
+    mode = "template"
+
+    # ── Try 1: MyMemory (sequential — parallel doesn't help) ─────────────
     try:
-        from deep_translator import GoogleTranslator
-        translator = GoogleTranslator(source='en', target=language)
-        result = translator.translate(advisory.text)
-        if result:
-            advisory.text = result
-            advisory.language = language
-            advisory.generation_mode = "deep_translated"
-    except Exception as e:
-        print(f"Translation fallback failed: {e}")
+        from deep_translator import MyMemoryTranslator
+        mm_lang = _MYMEMORY_LANG.get(language, f"{language}-IN")
+        chunks = _split_sentences(advisory.text, _MM_CHUNK)
+        translator = MyMemoryTranslator(source="en-US", target=mm_lang)
+        parts = [translator.translate(c) or c for c in chunks]
+        translated_text = "".join(parts)
+        mode = "mymemory_translated"
+
+    except Exception as exc:
+        print(f"[advisory] MyMemory failed ({type(exc).__name__}: {exc}), "
+              "trying Google Translate…")
+
+    # ── Try 2: GoogleTranslator backup (with exponential backoff) ────────
+    if not translated_text:
+        try:
+            from deep_translator import GoogleTranslator
+            g_chunks = _split_sentences(advisory.text, 4500)
+            translator = GoogleTranslator(source="en", target=language)
+            for attempt in range(3):
+                try:
+                    results = translator.translate_batch(g_chunks)
+                    translated_text = "\n\n".join(r or c for r, c in zip(results, g_chunks))
+                    mode = "google_translated"
+                    break
+                except Exception as exc2:
+                    if attempt == 2:
+                        raise
+                    wait = (2 ** attempt)
+                    print(f"[advisory] Google attempt {attempt+1} failed, "
+                          f"retrying in {wait}s…")
+                    time.sleep(wait)
+        except Exception as exc:
+            print(f"[advisory] Translation to '{language}' failed entirely "
+                  f"({type(exc).__name__}: {exc}). Showing English.")
+
+    if translated_text:
+        _translation_cache[cache_key] = {"text": translated_text, "mode": mode}
+        advisory.text = translated_text
+        advisory.language = language
+        advisory.generation_mode = mode
+
     return advisory
+
 
 
 def generate_advisory(

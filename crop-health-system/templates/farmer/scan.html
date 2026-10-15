@@ -444,6 +444,19 @@
         {% trans "Treatment Advisory" %}
       </h3>
 
+      <!-- Translation-in-progress badge -->
+      <div id="translation-badge" style="display:none; align-items:center; gap:6px;
+           font-size:11px; color:#6366f1; margin-bottom:10px; font-weight:600;">
+        <span style="display:inline-flex; gap:3px;">
+          <span style="width:5px;height:5px;border-radius:50%;background:#6366f1;
+                animation:bounce .8s ease-in-out infinite;" ></span>
+          <span style="width:5px;height:5px;border-radius:50%;background:#6366f1;
+                animation:bounce .8s ease-in-out .15s infinite;"></span>
+          <span style="width:5px;height:5px;border-radius:50%;background:#6366f1;
+                animation:bounce .8s ease-in-out .3s infinite;"></span>
+        </span>
+        भाषांतर होत आहे… / अनुवाद हो रहा है…
+      </div>
       <!-- Audio Player -->
       <div id="audio-block" style="display:none" class="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
         <p class="text-xs font-semibold text-[var(--ink-soft)] mb-2 uppercase tracking-wide flex items-center gap-1">
@@ -691,15 +704,23 @@ function showResults(data) {
   if (data.advisory_text) {
     document.getElementById('advisory-card').style.display = 'block';
     const el = document.getElementById('advisory-text');
-    // Convert **bold** markdown
-    el.innerHTML = data.advisory_text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
+    const fmt = t => t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    el.innerHTML = fmt(data.advisory_text);
 
     if (data.advisory_source) {
       const src = document.getElementById('advisory-source');
       src.textContent = `Source: ${data.advisory_source} · mode: ${data.advisory_mode || ''}`;
       src.style.display = 'block';
+    }
+
+    // Translation badge + polling
+    const transBadge = document.getElementById('translation-badge');
+    if (data.translation_pending && data.scan_id) {
+      transBadge.style.display = 'inline-flex';
+      pollTranslation(data.scan_id, data.advisory_text, data.advisory_mode,
+                      data.translation_target || 'mr');
+    } else {
+      transBadge.style.display = 'none';
     }
 
     // Audio — may arrive now (direct) or via background poll
@@ -830,6 +851,9 @@ function resetScan() {
   document.getElementById('audio-block').style.display = 'none';
   document.getElementById('res-risk-badge').style.display = 'none';
   document.getElementById('econ-card').style.display = 'none';
+  document.getElementById('translation-badge').style.display = 'none';
+  stopAudioPoll();
+  stopTranslationPoll();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -865,6 +889,49 @@ function pollAudio(scanId, lang, attempts = 0) {
 
 function stopAudioPoll() {
   if (_audioPollTimer) { clearTimeout(_audioPollTimer); _audioPollTimer = null; }
+}
+
+/* ────────────────────────────────────────────────
+   Translation polling (async background translate)
+──────────────────────────────────────────────── */
+let _transPollTimer = null;
+
+function pollTranslation(scanId, enText, enMode, targetLang, attempts = 0) {
+  const MAX = 20; // 60s max
+  if (attempts >= MAX) {
+    document.getElementById('translation-badge').style.display = 'none';
+    return;
+  }
+  _transPollTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`/scan/translation/${scanId}/`);
+      const d = await r.json();
+      if (d.ready && d.advisory_text) {
+        const el = document.getElementById('advisory-text');
+        // Smooth fade swap
+        el.style.transition = 'opacity 0.3s';
+        el.style.opacity = '0';
+        setTimeout(() => {
+          el.innerHTML = d.advisory_text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+          el.style.opacity = '1';
+        }, 300);
+        // Update source badge
+        const src = document.getElementById('advisory-source');
+        if (src) src.textContent = src.textContent.replace(/mode:[^·]*/, `mode: ${d.advisory_mode || ''}`);
+        document.getElementById('translation-badge').style.display = 'none';
+      } else {
+        pollTranslation(scanId, enText, enMode, targetLang, attempts + 1);
+      }
+    } catch (_) {
+      pollTranslation(scanId, enText, enMode, targetLang, attempts + 1);
+    }
+  }, 3000);
+}
+
+function stopTranslationPoll() {
+  if (_transPollTimer) { clearTimeout(_transPollTimer); _transPollTimer = null; }
 }
 
 /* ────────────────────────────────────────────────
