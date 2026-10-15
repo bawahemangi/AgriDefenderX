@@ -46,6 +46,20 @@ def officer_dashboard(request):
         "farmers_reached": reports.values("farmer").distinct().count(),
     }
 
+    # Trivial economic summary: sum of estimated loss ceiling across HIGH-risk reports.
+    # economic_estimate is a JSONField so we iterate in Python — kept simple per spec.
+    try:
+        high_risk_reports = reports.filter(risk_band="HIGH").exclude(economic_estimate=None)
+        total_estimated_loss = sum(
+            r.economic_estimate.get("expected_loss_high", 0)
+            for r in high_risk_reports
+            if isinstance(r.economic_estimate, dict)
+        )
+        stats["total_estimated_loss_high_risk"] = round(total_estimated_loss, 0) if total_estimated_loss else None
+    except Exception:
+        stats["total_estimated_loss_high_risk"] = None
+
+
     disease_distribution = list(
         reports.exclude(disease_detected="").values("disease_detected")
         .annotate(count=Count("id")).order_by("-count")[:8]

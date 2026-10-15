@@ -270,7 +270,31 @@ def analyse_image(request):
 
     econ_data = econ_future.result()
 
-    # ── 6. Build response ──────────────────────────────────────────────
+    # ── 6b. Range-based economic estimate (reports/economics.py) ────────
+    range_estimate = None
+    try:
+        from reports.economics import (
+            estimate_decision,
+            severity_from_risk_band,
+            _CROP_PARAMS,
+            _lookup_dict as _econ_lookup,
+        )
+        crop_key = crop.lower().strip()
+        crop_defaults = _econ_lookup(_CROP_PARAMS, crop_key)
+        severity = severity_from_risk_band(risk_band)
+        range_estimate = estimate_decision(
+            crop=crop,
+            disease=disease,
+            severity=severity,
+            area_acres=1.0,
+            yield_per_acre=crop_defaults.get("yield_per_acre", 15),
+            price_per_unit=crop_defaults.get("price_per_unit", 20.0),
+            confidence=confidence,
+        )
+    except Exception as exc:
+        print(f"[scan] Range-based economic estimate failed: {exc}")
+
+    # ── 7. Build response ──────────────────────────────────────────────
     payload = {
         "disease":              disease,
         "crop":                 crop,
@@ -283,6 +307,7 @@ def analyse_image(request):
         "advisory_source":      ", ".join(sources) if sources else None,
         "language":             advisory_language,
         "economics":            econ_data,
+        "economic_estimate":    range_estimate,
         "audio_url":            None,
         "scan_id":              scan_id,
         "audio_poll_lang":      tts_lang,

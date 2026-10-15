@@ -71,7 +71,24 @@ TRANSLATIONS = {
         "Scan your first crop": "तुमचे पहिले पीक स्कॅन करा",
         "You don't have a farm registered yet.": "तुमच्याकडे अद्याप कोणतेही शेत नोंदणीकृत नाही.",
         "Add a farm": "शेत जोडा",
-        "to get started.": "सुरू करण्यासाठी."
+        "to get started.": "सुरू करण्यासाठी.",
+        # ── Economic Decision Card (new) ──────────────────────────────────
+        "Treat or Accept the Loss?": "उपचार करा किंवा नुकसान स्वीकारा?",
+        "Estimate": "अंदाज",
+        "Treatment is economically worthwhile.": "उपचार आर्थिकदृष्ट्या फायदेशीर आहे.",
+        "Severe damage — consider skipping treatment": "गंभीर नुकसान — उपचार वगळण्याचा विचार करा",
+        "Preliminary: expert confirmation recommended before spending.": "प्राथमिक: खर्च करण्यापूर्वी तज्ञांच्या पुष्टीची शिफारस आहे.",
+        "Financial Breakdown": "आर्थिक तपशील",
+        "Expected Yield": "अपेक्षित उत्पन्न",
+        "Healthy crop value": "निरोगी पिकाचे मूल्य",
+        "Expected Loss": "अपेक्षित नुकसान",
+        "If untreated": "उपचार न केल्यास",
+        "Treatment Cost": "उपचार खर्च",
+        "Loss Avoided": "वाचलेले नुकसान",
+        "By treating": "उपचार केल्यावर",
+        "Net Benefit of Treatment": "उपचाराचा निव्वळ फायदा",
+        "Decision Support": "निर्णय सहाय्य",
+        "Based on assumed average yield, price and loss values. Adjust crop details for a better estimate.": "गृहीत सरासरी उत्पन्न, किंमत आणि नुकसान मूल्यांवर आधारित. चांगल्या अंदाजासाठी पीक तपशील समायोजित करा.",
     },
     "hi": {
         "Crop Health System": "फसल स्वास्थ्य प्रणाली",
@@ -138,7 +155,24 @@ TRANSLATIONS = {
         "Scan your first crop": "अपनी पहली फसल स्कैन करें",
         "You don't have a farm registered yet.": "आपका कोई खेत अभी तक पंजीकृत नहीं है।",
         "Add a farm": "खेत जोड़ें",
-        "to get started.": "शुरू करने के लिए।"
+        "to get started.": "शुरू करने के लिए।",
+        # ── Economic Decision Card (new) ──────────────────────────────────
+        "Treat or Accept the Loss?": "उपचार करें या नुकसान स्वीकार करें?",
+        "Estimate": "अनुमान",
+        "Treatment is economically worthwhile.": "उपचार आर्थिक रूप से लाभदायक है।",
+        "Severe damage — consider skipping treatment": "गंभीर क्षति — उपचार छोड़ने पर विचार करें",
+        "Preliminary: expert confirmation recommended before spending.": "प्रारंभिक: खर्च करने से पहले विशेषज्ञ पुष्टि की सिफारिश की जाती है।",
+        "Financial Breakdown": "वित्तीय विवरण",
+        "Expected Yield": "अपेक्षित उपज",
+        "Healthy crop value": "स्वस्थ फसल मूल्य",
+        "Expected Loss": "अपेक्षित नुकसान",
+        "If untreated": "यदि उपचार न किया जाए",
+        "Treatment Cost": "उपचार लागत",
+        "Loss Avoided": "बचा हुआ नुकसान",
+        "By treating": "उपचार करने पर",
+        "Net Benefit of Treatment": "उपचार का शुद्ध लाभ",
+        "Decision Support": "निर्णय समर्थन",
+        "Based on assumed average yield, price and loss values. Adjust crop details for a better estimate.": "मान्य औसत उपज, मूल्य और नुकसान मूल्यों पर आधारित। बेहतर अनुमान के लिए फसल विवरण समायोजित करें।",
     }
 }
 

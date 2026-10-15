@@ -85,6 +85,16 @@ class DiseaseReport(models.Model):
                                                   help_text="'TREAT' | 'ACCEPT_LOSS' | 'MONITOR'")
     econ_rationale            = models.TextField(blank=True, help_text="Human-readable economic rationale")
 
+    # -- New range-based estimate produced by reports/economics.py --
+    economic_estimate         = models.JSONField(
+        null=True, blank=True,
+        help_text=(
+            "Output of reports.economics.estimate_decision — includes low/high ranges, "
+            "decision_code, decision_message and assumptions_used. "
+            "PLACEHOLDER VALUES — not measured data."
+        ),
+    )
+
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

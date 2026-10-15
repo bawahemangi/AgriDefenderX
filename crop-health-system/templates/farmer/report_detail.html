@@ -184,7 +184,7 @@
             </h2>
           </div>
         </div>
-        {% if report.econ_roi_pct != None %}
+        {% if report.econ_roi_pct != None and report.econ_treatment_cost > 0 %}
         <div class="text-right shrink-0">
           <p class="text-2xl font-bold"
              style="color: {% if report.econ_verdict == 'TREAT' %}#16a34a{% elif report.econ_verdict == 'ACCEPT_LOSS' %}#dc2626{% else %}#d97706{% endif %};">{{ report.econ_roi_pct|floatformat:0 }}%</p>
@@ -197,9 +197,27 @@
     <!-- Cost-Benefit Waterfall -->
     <div class="p-5">
       <p class="text-xs font-semibold uppercase tracking-wide text-[var(--ink-soft)] mb-4">
-        Financial Breakdown · {{ report.farm.area_acres|floatformat:1 }} acre{{ report.farm.area_acres|floatformat:1|pluralize }}
+        Financial Breakdown &middot; {{ report.farm.area_acres|floatformat:1 }} acre{{ report.farm.area_acres|floatformat:1|pluralize }}
       </p>
 
+      {% if report.econ_treatment_cost == 0 %}
+      <!-- Healthy crop — no expenditure tiles -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        <!-- Expected Yield -->
+        <div class="rounded-xl p-3 text-center" style="background:#f8fafc; border:1px solid #e2e8f0;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Expected Yield</p>
+          <p class="text-xl font-bold text-slate-700">₹{{ report.econ_expected_yield_value|floatformat:0 }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">Healthy crop value</p>
+        </div>
+        <!-- No Treatment Banner -->
+        <div class="rounded-xl p-3 text-center" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-green-500 mb-1">Treatment Cost</p>
+          <p class="text-xl font-bold text-green-600">₹0</p>
+          <p class="text-[10px] text-green-500 mt-0.5">No treatment required ✔</p>
+        </div>
+      </div>
+      {% else %}
+      <!-- Diseased crop — full 4-tile grid -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
 
         <!-- Expected Yield -->
@@ -230,9 +248,10 @@
           <p class="text-[10px] text-green-300 mt-0.5">After treatment</p>
         </div>
       </div>
+      {% endif %}
 
-      <!-- Net Benefit Bar -->
-      {% if report.econ_net_benefit != None %}
+      <!-- Net Benefit Bar (only for diseased crops) -->
+      {% if report.econ_net_benefit != None and report.econ_treatment_cost > 0 %}
       <div class="rounded-xl p-4 mb-4"
            style="background: {% if report.econ_net_benefit > 0 %}#f0fdf4{% else %}#fff1f2{% endif %}; border: 1px solid {% if report.econ_net_benefit > 0 %}#bbf7d0{% else %}#fecdd3{% endif %};">
         <div class="flex items-center justify-between">
@@ -270,6 +289,123 @@
       </p>
     </div>
   </div>
+  {% endif %}
+
+</div>
+
+  {# ───────────── NEW: Range-Based Economic Decision Card ────────────── #}
+  {% load i18n %}
+  {% if report.economic_estimate %}
+  {% with est=report.economic_estimate %}
+  <div class="card overflow-hidden mt-6"
+       id="econ-decision-card"
+       style="border: 1.5px solid {% if est.decision_code == 'TREAT' %}var(--risk-low){% else %}var(--risk-high){% endif %};">
+
+    {# ── Header ─────────────────────────────────────────────── #}
+    <div class="p-5 pb-4"
+         style="background: {% if est.decision_code == 'TREAT' %}linear-gradient(135deg,#f0fdf4,#dcfce7){% else %}linear-gradient(135deg,#fff1f2,#ffe4e6){% endif %};">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-bold"
+               style="background: {% if est.decision_code == 'TREAT' %}var(--risk-low){% else %}var(--risk-high){% endif %};">
+            {% if est.decision_code == 'TREAT' %}✔{% else %}✕{% endif %}
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest"
+               style="color: {% if est.decision_code == 'TREAT' %}#166534{% else %}#991b1b{% endif %};">
+              💰 {% trans "Treat or Accept the Loss?" %} · <span class="font-normal normal-case tracking-normal">{% trans "Estimate" %}</span>
+            </p>
+            <h2 class="font-serif text-xl font-bold"
+                style="color: {% if est.decision_code == 'TREAT' %}#15803d{% else %}#b91c1c{% endif %};">
+              {% if est.decision_code == 'TREAT' %}{% trans "Treatment is economically worthwhile." %}
+              {% else %}{% trans "Severe damage — consider skipping treatment" %}{% endif %}
+            </h2>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Body: Financial tiles with ranges ──────────────────── #}
+    <div class="p-5">
+
+      {% if est.is_preliminary %}
+      <div class="rounded-lg p-3 mb-4 text-sm font-medium flex items-start gap-2"
+           style="background:#fffbeb; color:#92400e; border:1px solid #fde68a;">
+        <span class="text-base mt-0.5">⚠️</span>
+        <span>{% trans "Preliminary: expert confirmation recommended before spending." %}</span>
+      </div>
+      {% endif %}
+
+      <p class="text-xs font-semibold uppercase tracking-wide text-[var(--ink-soft)] mb-4">
+        {% trans "Financial Breakdown" %} · {{ report.farm.area_acres|floatformat:1 }} {% trans "Acres" %}
+      </p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {# Expected Yield Value #}
+        <div class="rounded-xl p-3 text-center" style="background:#f8fafc; border:1px solid #e2e8f0;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">{% trans "Expected Yield" %}</p>
+          <p class="text-xl font-bold text-slate-700">₹{{ est.expected_value|floatformat:0 }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">{% trans "Healthy crop value" %}</p>
+        </div>
+
+        {# Expected Loss (range) #}
+        <div class="rounded-xl p-3 text-center" style="background:#fff1f2; border:1px solid #fecdd3;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-rose-400 mb-1">{% trans "Expected Loss" %}</p>
+          <p class="text-lg font-bold text-rose-600">₹{{ est.expected_loss_low|floatformat:0 }}–{{ est.expected_loss_high|floatformat:0 }}</p>
+          <p class="text-[10px] text-rose-300 mt-0.5">{% trans "If untreated" %}</p>
+        </div>
+
+        {# Treatment Cost #}
+        <div class="rounded-xl p-3 text-center" style="background:#fffbeb; border:1px solid #fde68a;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-amber-500 mb-1">{% trans "Treatment Cost" %}</p>
+          <p class="text-xl font-bold text-amber-600">₹{{ est.treatment_cost|floatformat:0 }}</p>
+          <p class="text-[10px] text-amber-400 mt-0.5">{% trans "Estimated" %}</p>
+        </div>
+
+        {# Loss Avoided (range) #}
+        <div class="rounded-xl p-3 text-center" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-green-500 mb-1">{% trans "Loss Avoided" %}</p>
+          <p class="text-lg font-bold text-green-600">₹{{ est.loss_avoided_low|floatformat:0 }}–{{ est.loss_avoided_high|floatformat:0 }}</p>
+          <p class="text-[10px] text-green-400 mt-0.5">{% trans "By treating" %}</p>
+        </div>
+      </div>
+
+      {# Net Benefit (range) #}
+      <div class="rounded-xl p-4 mb-4"
+           style="background: {% if est.decision_code == 'TREAT' %}#f0fdf4{% else %}#fff1f2{% endif %}; border: 1px solid {% if est.decision_code == 'TREAT' %}#bbf7d0{% else %}#fecdd3{% endif %};">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-[var(--ink-soft)] font-medium">{% trans "Net Benefit of Treatment" %}</p>
+            <p class="text-2xl font-bold mt-0.5"
+               style="color: {% if est.decision_code == 'TREAT' %}#16a34a{% else %}#dc2626{% endif %}">
+              ₹{{ est.net_benefit_low|floatformat:0 }} – ₹{{ est.net_benefit_high|floatformat:0 }}
+            </p>
+          </div>
+          <div class="text-3xl">
+            {% if est.decision_code == 'TREAT' %}📈{% else %}📉{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {# Decision Message #}
+      <div class="flex gap-3 rounded-xl p-4"
+           style="background: {% if est.decision_code == 'TREAT' %}#f0fdf4{% else %}#fff1f2{% endif %};">
+        <span class="text-xl shrink-0 mt-0.5">
+          {% if est.decision_code == 'TREAT' %}💡{% else %}⚠️{% endif %}
+        </span>
+        <p class="text-sm leading-relaxed"
+           style="color: {% if est.decision_code == 'TREAT' %}#166534{% else %}#991b1b{% endif %}">
+          <strong>{% trans "Decision Support" %}:</strong> {{ est.decision_message }}
+        </p>
+      </div>
+
+      {# Disclaimer #}
+      <p class="text-[10px] text-[var(--ink-soft)] mt-4">
+        📊 {% trans "Based on assumed average yield, price and loss values. Adjust crop details for a better estimate." %}
+      </p>
+    </div>
+  </div>
+  {% endwith %}
   {% endif %}
 
 </div>

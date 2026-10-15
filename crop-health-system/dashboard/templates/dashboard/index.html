@@ -49,7 +49,15 @@
     <div class="card p-4"><p class="text-3xl font-serif font-semibold" style="color:var(--risk-high)">{{ stats.high_risk }}</p><p class="text-xs text-[var(--ink-soft)] mt-1">High-risk farms</p></div>
     <div class="card p-4"><p class="text-3xl font-serif font-semibold" style="color:var(--clay)">{{ stats.pending_review }}</p><p class="text-xs text-[var(--ink-soft)] mt-1">Pending expert review</p></div>
     <div class="card p-4"><p class="text-3xl font-serif font-semibold">{{ stats.farmers_reached }}</p><p class="text-xs text-[var(--ink-soft)] mt-1">Farmers reached</p></div>
+    {% if stats.total_estimated_loss_high_risk %}
+    <div class="card p-4 sm:col-span-4 border-l-4" style="border-left-color:var(--risk-high)">
+      <p class="text-xs text-[var(--ink-soft)] uppercase tracking-wide font-semibold mb-1">📊 Estimated Loss — High-Risk Reports <span class="font-normal normal-case">(Estimate only · placeholder assumptions)</span></p>
+      <p class="text-2xl font-serif font-bold" style="color:var(--risk-high)">₹{{ stats.total_estimated_loss_high_risk|floatformat:0 }}</p>
+      <p class="text-[10px] text-[var(--ink-soft)] mt-1">Sum of upper-bound loss estimates across {{ stats.high_risk }} high-risk report{{ stats.high_risk|pluralize }}. Based on assumed average yield and price data — not measured values.</p>
+    </div>
+    {% endif %}
   </div>
+
 
   <!-- Tabs Navigation -->
   <div class="flex gap-4 border-b border-[var(--line)]">

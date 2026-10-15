@@ -223,3 +223,55 @@ msgstr "खेत जोड़ें"
 
 msgid "to get started."
 msgstr "शुरू करने के लिए।"
+
+msgid "Treat or Accept the Loss?"
+msgstr "उपचार करें या नुकसान स्वीकार करें?"
+
+msgid "Estimate"
+msgstr "अनुमान"
+
+msgid "Treatment is economically worthwhile."
+msgstr "उपचार आर्थिक रूप से लाभदायक है।"
+
+msgid "Severe damage — consider skipping treatment"
+msgstr "गंभीर क्षति — उपचार छोड़ने पर विचार करें"
+
+msgid "Preliminary: expert confirmation recommended before spending."
+msgstr "प्रारंभिक: खर्च करने से पहले विशेषज्ञ पुष्टि की सिफारिश की जाती है।"
+
+msgid "Financial Breakdown"
+msgstr "वित्तीय विवरण"
+
+msgid "Expected Yield"
+msgstr "अपेक्षित उपज"
+
+msgid "Healthy crop value"
+msgstr "स्वस्थ फसल मूल्य"
+
+msgid "Expected Loss"
+msgstr "अपेक्षित नुकसान"
+
+msgid "If untreated"
+msgstr "यदि उपचार न किया जाए"
+
+msgid "Treatment Cost"
+msgstr "उपचार लागत"
+
+msgid "Loss Avoided"
+msgstr "बचा हुआ नुकसान"
+
+msgid "By treating"
+msgstr "उपचार करने पर"
+
+msgid "Net Benefit of Treatment"
+msgstr "उपचार का शुद्ध लाभ"
+
+msgid "Decision Support"
+msgstr "निर्णय समर्थन"
+
+msgid ""
+"Based on assumed average yield, price and loss values. Adjust crop details "
+"for a better estimate."
+msgstr ""
+"मान्य औसत उपज, मूल्य और नुकसान मूल्यों पर आधारित। बेहतर अनुमान के लिए फसल "
+"विवरण समायोजित करें।"

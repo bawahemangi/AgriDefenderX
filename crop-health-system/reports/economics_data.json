@@ -1,0 +1,83 @@
+{
+  "_note": "PLACEHOLDER ASSUMPTIONS — prototype only. These numbers are NOT measured field data. They are illustrative defaults assembled from publicly available MSP notifications, KVK bulletins, and APMC market aggregators (2024-25). Replace every value here with extension-office or peer-reviewed research figures before using in any real farm-advisory context.",
+
+  "default_crop_params": {
+    "tomato":   { "yield_per_acre": 80,  "price_per_unit": 18.0,  "unit": "quintal" },
+    "potato":   { "yield_per_acre": 80,  "price_per_unit": 12.0,  "unit": "quintal" },
+    "maize":    { "yield_per_acre": 18,  "price_per_unit": 20.9,  "unit": "quintal" },
+    "grape":    { "yield_per_acre": 40,  "price_per_unit": 40.0,  "unit": "quintal" },
+    "apple":    { "yield_per_acre": 30,  "price_per_unit": 60.0,  "unit": "quintal" },
+    "soybean":  { "yield_per_acre": 10,  "price_per_unit": 48.92, "unit": "quintal" },
+    "wheat":    { "yield_per_acre": 15,  "price_per_unit": 22.75, "unit": "quintal" },
+    "rice":     { "yield_per_acre": 20,  "price_per_unit": 23.0,  "unit": "quintal" },
+    "cotton":   { "yield_per_acre":  7,  "price_per_unit": 70.2,  "unit": "quintal" },
+    "onion":    { "yield_per_acre": 50,  "price_per_unit": 10.0,  "unit": "quintal" },
+    "_generic": { "yield_per_acre": 15,  "price_per_unit": 20.0,  "unit": "quintal" }
+  },
+
+  "loss_fraction": {
+    "_note": "Fraction of expected yield value lost if disease goes untreated, by severity band.",
+    "early blight":         { "low": 0.10, "medium": 0.25, "high": 0.40 },
+    "late blight":          { "low": 0.20, "medium": 0.45, "high": 0.70 },
+    "leaf curl":            { "low": 0.15, "medium": 0.35, "high": 0.55 },
+    "powdery mildew":       { "low": 0.08, "medium": 0.20, "high": 0.35 },
+    "downy mildew":         { "low": 0.12, "medium": 0.30, "high": 0.50 },
+    "bacterial wilt":       { "low": 0.30, "medium": 0.60, "high": 0.85 },
+    "fusarium wilt":        { "low": 0.35, "medium": 0.65, "high": 0.90 },
+    "anthracnose":          { "low": 0.12, "medium": 0.30, "high": 0.45 },
+    "rust":                 { "low": 0.15, "medium": 0.35, "high": 0.55 },
+    "mosaic virus":         { "low": 0.20, "medium": 0.50, "high": 0.75 },
+    "leaf spot":            { "low": 0.08, "medium": 0.22, "high": 0.38 },
+    "yellow mosaic virus":  { "low": 0.25, "medium": 0.55, "high": 0.80 },
+    "gray leaf spot":       { "low": 0.10, "medium": 0.28, "high": 0.45 },
+    "northern leaf blight": { "low": 0.12, "medium": 0.32, "high": 0.50 },
+    "black rot":            { "low": 0.15, "medium": 0.40, "high": 0.65 },
+    "common rust":          { "low": 0.10, "medium": 0.28, "high": 0.45 },
+    "southern leaf blight": { "low": 0.15, "medium": 0.38, "high": 0.60 },
+    "_generic":             { "low": 0.10, "medium": 0.30, "high": 0.50 }
+  },
+
+  "treatment_efficacy": {
+    "_note": "Fraction of expected loss that is avoided/recovered by timely treatment, by severity.",
+    "early blight":         { "low": 0.85, "medium": 0.78, "high": 0.65 },
+    "late blight":          { "low": 0.70, "medium": 0.60, "high": 0.45 },
+    "leaf curl":            { "low": 0.65, "medium": 0.55, "high": 0.40 },
+    "powdery mildew":       { "low": 0.88, "medium": 0.82, "high": 0.70 },
+    "downy mildew":         { "low": 0.75, "medium": 0.68, "high": 0.52 },
+    "bacterial wilt":       { "low": 0.30, "medium": 0.20, "high": 0.10 },
+    "fusarium wilt":        { "low": 0.25, "medium": 0.15, "high": 0.08 },
+    "anthracnose":          { "low": 0.82, "medium": 0.72, "high": 0.60 },
+    "rust":                 { "low": 0.78, "medium": 0.68, "high": 0.55 },
+    "mosaic virus":         { "low": 0.25, "medium": 0.18, "high": 0.10 },
+    "leaf spot":            { "low": 0.85, "medium": 0.78, "high": 0.65 },
+    "yellow mosaic virus":  { "low": 0.22, "medium": 0.16, "high": 0.08 },
+    "gray leaf spot":       { "low": 0.78, "medium": 0.70, "high": 0.56 },
+    "northern leaf blight": { "low": 0.75, "medium": 0.66, "high": 0.52 },
+    "black rot":            { "low": 0.55, "medium": 0.45, "high": 0.30 },
+    "common rust":          { "low": 0.80, "medium": 0.72, "high": 0.58 },
+    "southern leaf blight": { "low": 0.70, "medium": 0.60, "high": 0.45 },
+    "_generic":             { "low": 0.70, "medium": 0.60, "high": 0.45 }
+  },
+
+  "cost_per_acre": {
+    "_note": "Approximate treatment cost in INR per acre (fungicide/pesticide + labour). Source: KVK bulletins. Highly region-dependent — replace with local figures.",
+    "early blight":         2800,
+    "late blight":          3200,
+    "leaf curl":            2600,
+    "powdery mildew":       2200,
+    "downy mildew":         2800,
+    "bacterial wilt":       2000,
+    "fusarium wilt":        2000,
+    "anthracnose":          2500,
+    "rust":                 2400,
+    "mosaic virus":         1800,
+    "leaf spot":            2200,
+    "yellow mosaic virus":  1800,
+    "gray leaf spot":       2400,
+    "northern leaf blight": 2600,
+    "black rot":            2800,
+    "common rust":          2400,
+    "southern leaf blight": 2800,
+    "_generic":             2500
+  }
+}

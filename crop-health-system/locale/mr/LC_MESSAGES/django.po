@@ -222,3 +222,55 @@ msgstr "शेत जोडा"
 
 msgid "to get started."
 msgstr "सुरू करण्यासाठी."
+
+msgid "Treat or Accept the Loss?"
+msgstr "उपचार करा किंवा नुकसान स्वीकारा?"
+
+msgid "Estimate"
+msgstr "अंदाज"
+
+msgid "Treatment is economically worthwhile."
+msgstr "उपचार आर्थिकदृष्ट्या फायदेशीर आहे."
+
+msgid "Severe damage — consider skipping treatment"
+msgstr "गंभीर नुकसान — उपचार वगळण्याचा विचार करा"
+
+msgid "Preliminary: expert confirmation recommended before spending."
+msgstr "प्राथमिक: खर्च करण्यापूर्वी तज्ञांच्या पुष्टीची शिफारस आहे."
+
+msgid "Financial Breakdown"
+msgstr "आर्थिक तपशील"
+
+msgid "Expected Yield"
+msgstr "अपेक्षित उत्पन्न"
+
+msgid "Healthy crop value"
+msgstr "निरोगी पिकाचे मूल्य"
+
+msgid "Expected Loss"
+msgstr "अपेक्षित नुकसान"
+
+msgid "If untreated"
+msgstr "उपचार न केल्यास"
+
+msgid "Treatment Cost"
+msgstr "उपचार खर्च"
+
+msgid "Loss Avoided"
+msgstr "वाचलेले नुकसान"
+
+msgid "By treating"
+msgstr "उपचार केल्यावर"
+
+msgid "Net Benefit of Treatment"
+msgstr "उपचाराचा निव्वळ फायदा"
+
+msgid "Decision Support"
+msgstr "निर्णय सहाय्य"
+
+msgid ""
+"Based on assumed average yield, price and loss values. Adjust crop details "
+"for a better estimate."
+msgstr ""
+"गृहीत सरासरी उत्पन्न, किंमत आणि नुकसान मूल्यांवर आधारित. चांगल्या अंदाजासाठी"
+" पीक तपशील समायोजित करा."

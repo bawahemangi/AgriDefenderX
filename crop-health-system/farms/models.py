@@ -39,6 +39,17 @@ class CropCycle(models.Model):
     growth_stage = models.CharField(max_length=20, choices=GrowthStage.choices, default=GrowthStage.VEGETATIVE)
     active = models.BooleanField(default=True)
 
+    # -- Economic decision support (optional overrides) --
+    # Leave blank to use the defaults from reports/economics_data.json.
+    expected_yield_per_acre = models.FloatField(
+        null=True, blank=True,
+        help_text="Expected yield in quintals/acre (leave blank to use crop-type default)",
+    )
+    expected_price_per_unit = models.FloatField(
+        null=True, blank=True,
+        help_text="Expected selling price in ₹/quintal (leave blank to use crop-type default)",
+    )
+
     def __str__(self):
         return f"{self.crop} @ {self.farm.name} (sown {self.sowing_date})"
 

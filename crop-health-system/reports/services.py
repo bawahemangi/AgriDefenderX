@@ -156,5 +156,72 @@ def process_disease_report(report: DiseaseReport, language: str = None) -> Disea
     except Exception as e:
         print(f"Economic engine failed: {e}")
 
+    # -- 8. Range-based economic decision (reports/economics.py) --
+    try:
+        from .economics import (
+            estimate_decision,
+            severity_from_risk_band,
+            fetch_mandi_price,
+        )
+        from .economics import _lookup_dict as _ec_lookup, _CROP_PARAMS
+
+        crop_key  = result["crop"].lower().strip()
+        crop_defaults = _lookup_dict_safe(crop_key, _CROP_PARAMS)
+
+        # Resolve yield and price: crop_cycle overrides > JSON defaults
+        ypa = (
+            report.crop_cycle.expected_yield_per_acre
+            if report.crop_cycle and report.crop_cycle.expected_yield_per_acre
+            else crop_defaults.get("yield_per_acre", 15)
+        )
+        # Try Agmarknet price first, then cycle override, then JSON default
+        market_price = fetch_mandi_price(result["crop"])
+        ppu = (
+            market_price
+            or (
+                report.crop_cycle.expected_price_per_unit
+                if report.crop_cycle and report.crop_cycle.expected_price_per_unit
+                else None
+            )
+            or crop_defaults.get("price_per_unit", 20.0)
+        )
+
+        severity = severity_from_risk_band(risk["risk_band"])
+        area = report.farm.area_acres if report.farm.area_acres and report.farm.area_acres > 0 else None
+
+        est = estimate_decision(
+            crop=result["crop"],
+            disease=result["disease"],
+            severity=severity,
+            area_acres=area or 1.0,
+            yield_per_acre=ypa,
+            price_per_unit=ppu,
+            confidence=result["confidence"],
+        )
+        if est is not None and area is not None:
+            report.economic_estimate = est
+        elif est is not None:
+            # area was missing — store estimate but mark it
+            est["area_missing"] = True
+            report.economic_estimate = est
+    except Exception as e:
+        print(f"Range-based economic estimate failed: {e}")
+
     report.save()
     return report
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _lookup_dict_safe(key: str, table: dict) -> dict:
+    """Partial-match crop lookup, returns empty dict on miss."""
+    if key in table:
+        return table[key]
+    for k, v in table.items():
+        if k.startswith("_"):
+            continue
+        if k in key or key in k:
+            return v
+    return table.get("_generic", {})

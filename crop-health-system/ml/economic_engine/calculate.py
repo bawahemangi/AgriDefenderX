@@ -189,6 +189,30 @@ def calculate_economics(
 
     # Scale to actual area
     total_yield_value = price_per_q * yield_q * area_acres  # ₹
+
+    # --- Healthy crop short-circuit ---
+    # No disease means no loss, no treatment needed, and therefore no
+    # expenditure or "profit from treatment" to display. Return zeroed
+    # financials immediately to avoid misleading numbers in the UI.
+    if is_healthy or profile["damage"] == 0.0:
+        return EconomicResult(
+            expected_yield_value=round(total_yield_value, 2),
+            current_loss_value=0.0,
+            treatment_cost=0.0,
+            expected_recovery=0.0,
+            net_benefit=0.0,
+            roi_pct=0.0,
+            verdict="MONITOR",
+            rationale=(
+                "Crop appears healthy. No treatment needed. "
+                "Continue standard monitoring practices."
+            ),
+            crop=crop,
+            disease=disease,
+            area_acres=area_acres,
+            risk_band=risk_key,
+        )
+
     treatment_cost    = treat_cost_per_a * area_acres        # ₹
 
     # Adjust damage fraction for risk environment
@@ -206,13 +230,10 @@ def calculate_economics(
     net_benefit   = expected_recovery - treatment_cost
     roi_pct       = (net_benefit / treatment_cost * 100) if treatment_cost > 0 else 0.0
 
-    # --- Verdict logic ---
-    if is_healthy or profile["damage"] == 0.0:
+    # --- Verdict logic (only reached for diseased crops) ---
+    if False:  # placeholder; healthy crops already returned above
         verdict   = "MONITOR"
-        rationale = (
-            "Crop appears healthy. No treatment needed. "
-            "Continue standard monitoring practices."
-        )
+        rationale = ""
     elif profile["treatability"] < 0.30:
         verdict   = "ACCEPT_LOSS"
         rationale = (

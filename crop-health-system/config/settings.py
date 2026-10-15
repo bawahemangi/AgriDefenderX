@@ -153,3 +153,8 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 # train.py), which produces much sharper, well-separated softmax
 # confidences, raise this back up to ~0.6 via the env var.
 LOW_CONFIDENCE_THRESHOLD = float(os.environ.get("LOW_CONFIDENCE_THRESHOLD", "0.20"))
+
+# data.gov.in API key for optional mandi-price lookup (Agmarknet dataset).
+# Fully optional — if missing, the economic estimate silently falls back to
+# the farmer-entered or JSON-default price.
+DATA_GOV_API_KEY = os.environ.get("DATA_GOV_API_KEY", "")
